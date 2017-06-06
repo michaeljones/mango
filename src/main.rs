@@ -3,49 +3,60 @@ extern crate yaml_rust;
 use yaml_rust::YamlLoader;
 use std::fs::File;
 use std::io::prelude::*;
+use std::ops::DerefMut;
 
 trait Node {
-    fn pull(&self) -> Vec<String>;
+    fn pull(&mut self) -> Vec<String>;
+    /*fn setInput(&self, &Node) -> ();*/
 }
 
 struct StandardIn {}
 
 impl Node for StandardIn {
-    fn pull(&self) -> Vec<String> {
+    fn pull(&mut self) -> Vec<String> {
         return vec!["abcdef".to_string(),
                     "ghijk".to_string(),
                     "asdfabcasdfasd".to_string()];
     }
+
+    /*fn setInput(&self, node: &Node) {}*/
 }
 
 
-struct StandardOut<'a> {
-    input: Option<&'a Node>,
+
+struct StandardOut {
+    input: Option<Box<Node>>,
 }
 
-impl<'a> Node for StandardOut<'a> {
-    fn pull(&self) -> Vec<String> {
+impl Node for StandardOut {
+    fn pull(&mut self) -> Vec<String> {
         match self.input {
             None => return vec![],
-            Some(input) => {
+            Some(ref mut input) => {
                 let content = input.pull();
                 println!("{:?}", content);
                 return vec![];
             }
         }
     }
+
+    /*
+    fn setInput(&self, node: &Node) {
+        self.input = Some(node);
+    }
+    */
 }
 
-struct StringMatch<'a> {
-    input: Option<&'a Node>,
+struct StringMatch {
+    input: Option<Box<Node>>,
     value: String,
 }
 
-impl<'a> Node for StringMatch<'a> {
-    fn pull(&self) -> Vec<String> {
+impl Node for StringMatch {
+    fn pull(&mut self) -> Vec<String> {
         match self.input {
             None => return vec![],
-            Some(input) => {
+            Some(ref mut input) => {
                 let content = input.pull();
                 let mut output = vec![];
                 for i in &content {
@@ -57,9 +68,15 @@ impl<'a> Node for StringMatch<'a> {
             }
         }
     }
+
+    /*
+    fn setInput(&self, node: &Node) {
+        self.input = Some(node);
+    }
+    */
 }
 
-fn pull<T: Node>(node: &T) -> Vec<String> {
+fn pull<T: Node>(node: &mut T) -> Vec<String> {
     node.pull()
 }
 
@@ -71,14 +88,16 @@ fn main() {
 
     let docs = YamlLoader::load_from_str(contents.as_str()).unwrap();
 
-    let input = StandardIn {};
-    let string_match = StringMatch {
-        input: Some(&input),
-        value: "abc".to_string(),
-    };
-    let output = StandardOut { input: Some(&string_match) };
+    let input = Box::new(StandardIn {});
+    let string_match = Box::new(StringMatch {
+                                    input: Some(input),
+                                    value: "abc".to_string(),
+                                });
+    let mut output = Box::new(StandardOut { input: Some(string_match) });
 
-    // connect(input, stringMatch);
-    // connect(stringMatch, output);
-    pull(&output);
+    pull(output.deref_mut());
+
+    // string_match.setInput(input);
+    // // connect(stringMatch, output);
+    // pull(output.borrow());
 }
