@@ -20,8 +20,18 @@ impl Node for StandardOut {
             None => return FlowData::Error("No input".to_string()),
             Some(ref mut input) => {
                 let content = input.borrow_mut().pull();
-                println!("{:?}", content);
-                return FlowData::StringArray(vec![]);
+                match content {
+                    FlowData::StringArray(lines) => {
+                        for line in lines.iter() {
+                            println!("{}", line)
+                        }
+                    }
+                    FlowData::String(text) => println!("{}", text),
+                    other => {
+                        println!("{:?}", other);
+                    }
+                }
+                return FlowData::None;
             }
         }
     }

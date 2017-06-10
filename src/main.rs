@@ -23,6 +23,7 @@ use nodes::string_contains::StringContains;
 
 #[derive(Debug)]
 pub enum FlowData {
+    None,
     Error(String),
     String(String),
     StringArray(Vec<String>),
@@ -123,7 +124,6 @@ fn main() {
                 if let Some(node) = build(entry) {
                     built_nodes.push(node.clone());
                     node_map.insert(node.borrow_mut().id(), node.clone());
-                    println!("Building {:?}", entry);
                 } else {
                     println!("Failed to build {:?}", entry)
                 }
