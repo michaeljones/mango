@@ -10,6 +10,10 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::ops::DerefMut;
 
+mod nodes;
+
+use nodes::standard_in::StandardIn;
+
 #[derive(Debug)]
 enum FlowData {
     Error(String),
@@ -25,27 +29,6 @@ trait Node {
     fn pull(&mut self) -> FlowData;
     fn set_input(&mut self, Rc<RefCell<Node>>) -> ();
 }
-
-struct StandardIn {
-    id: i64,
-}
-
-impl Node for StandardIn {
-    fn id(&self) -> i64 {
-        self.id
-    }
-
-    fn pull(&mut self) -> FlowData {
-        let stdin = std::io::stdin();
-        let mut stream = stdin.lock();
-        let mut content = String::new();
-        stream.read_to_string(&mut content);
-        return FlowData::String(content);
-    }
-
-    fn set_input(&mut self, _node: Rc<RefCell<Node>>) -> () {}
-}
-
 
 struct StandardOut {
     id: i64,
