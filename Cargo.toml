@@ -1,0 +1,7 @@
+[package]
+name = "rust-etl"
+version = "0.1.0"
+authors = ["Michael Jones <m.pricejones@gmail.com>"]
+
+[dependencies]
+yaml-rust = "*"
