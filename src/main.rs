@@ -1,6 +1,7 @@
 
 extern crate yaml_rust;
 extern crate json;
+extern crate clap;
 
 use yaml_rust::{Yaml, YamlLoader};
 use std::fs::File;
@@ -9,6 +10,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::ops::DerefMut;
+use clap::{Arg, App, SubCommand};
 
 mod nodes;
 
@@ -133,7 +135,18 @@ fn connect(from: i64,
 
 fn main() {
 
-    let mut file = File::open("example.yaml").unwrap();
+    let matches = App::new("slipstream")
+        .version("0.1")
+        .author("Michael Jones")
+        .about("Node graph for text editing")
+        .arg(Arg::with_name("INPUT")
+                 .help("Sets the input file to use")
+                 .required(true)
+                 .index(1))
+        .get_matches();
+
+    let filename = matches.value_of("INPUT").unwrap();
+    let mut file = File::open(filename).unwrap();
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
 

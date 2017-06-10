@@ -7,3 +7,4 @@ authors = ["Michael Jones <m.pricejones@gmail.com>"]
 yaml-rust = "*"
 json = "*"
 conrod = "*"
+clap = "*"
