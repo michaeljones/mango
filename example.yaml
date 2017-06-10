@@ -2,9 +2,10 @@
 nodes:
     - type: standard-in
       id: 1
-    - type: string-contains
+    - type: to-int
       id: 2
-      value: abc
+    - type: sum
+      id: 4
     - type: standard-out
       id: 3
 
@@ -12,4 +13,6 @@ connections:
     - from: 1
       to: 2
     - from: 2
+      to: 4
+    - from: 4
       to: 3

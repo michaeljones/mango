@@ -8,9 +8,18 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::ops::DerefMut;
 
+#[derive(Debug)]
+enum FlowData {
+    Error(String),
+    String,
+    StringArray(Vec<String>),
+    Int(i64),
+    IntArray(Vec<i64>),
+}
+
 trait Node {
     fn id(&self) -> i64;
-    fn pull(&mut self) -> Vec<String>;
+    fn pull(&mut self) -> FlowData;
     fn set_input(&mut self, Rc<RefCell<Node>>) -> ();
 }
 
@@ -23,15 +32,18 @@ impl Node for StandardIn {
         self.id
     }
 
-    fn pull(&mut self) -> Vec<String> {
-        return vec!["abcdef".to_string(),
-                    "ghijk".to_string(),
-                    "asdfabcasdfasd".to_string()];
+    fn pull(&mut self) -> FlowData {
+        let mut lines = vec![];
+        let stdin = std::io::stdin();
+        let stream = stdin.lock();
+        for line in stream.lines() {
+            lines.push(line.unwrap());
+        }
+        return FlowData::StringArray(lines);
     }
 
     fn set_input(&mut self, _node: Rc<RefCell<Node>>) -> () {}
 }
-
 
 
 struct StandardOut {
@@ -39,17 +51,18 @@ struct StandardOut {
     input: Option<Rc<RefCell<Node>>>,
 }
 
+
 impl Node for StandardOut {
     fn id(&self) -> i64 {
         self.id
     }
-    fn pull(&mut self) -> Vec<String> {
+    fn pull(&mut self) -> FlowData {
         match self.input {
-            None => return vec![],
+            None => return FlowData::Error("No input".to_string()),
             Some(ref mut input) => {
                 let content = input.borrow_mut().pull();
                 println!("{:?}", content);
-                return vec![];
+                return FlowData::StringArray(vec![]);
             }
         }
     }
@@ -69,18 +82,25 @@ impl Node for StringContains {
     fn id(&self) -> i64 {
         self.id
     }
-    fn pull(&mut self) -> Vec<String> {
+    fn pull(&mut self) -> FlowData {
         match self.input {
-            None => return vec![],
+            None => return FlowData::Error("No input".to_string()),
             Some(ref mut input) => {
                 let content = input.borrow_mut().pull();
-                let mut output = vec![];
-                for i in &content {
-                    if i.contains(self.value.as_str()) {
-                        output.push(i.to_string());
-                    }
-                }
-                return output;
+
+                return match content {
+                           FlowData::StringArray(lines) => {
+                               let mut output = vec![];
+                               for i in &lines {
+                                   if i.contains(self.value.as_str()) {
+                                       output.push(i.to_string());
+                                   }
+                               }
+                               return FlowData::StringArray(output);
+                           }
+                           FlowData::Error(string) => FlowData::Error(string),
+                           _ => FlowData::Error("Unknown data".to_string()),
+                       };
             }
         }
     }
@@ -90,7 +110,81 @@ impl Node for StringContains {
     }
 }
 
-fn pull(node: &mut Node) -> Vec<String> {
+
+struct ToInt {
+    id: i64,
+    input: Option<Rc<RefCell<Node>>>,
+}
+
+impl Node for ToInt {
+    fn id(&self) -> i64 {
+        self.id
+    }
+
+    fn pull(&mut self) -> FlowData {
+        match self.input {
+            None => return FlowData::Error("No input".to_string()),
+            Some(ref mut input) => {
+                let content = input.borrow_mut().pull();
+
+                return match content {
+                           FlowData::StringArray(lines) => {
+                               let mut output = vec![];
+                               for line in &lines {
+                                   match line.parse::<i64>() {
+                                       Ok(int) => output.push(int),
+                                       Err(_e) => (),
+                                   }
+                               }
+                               return FlowData::IntArray(output);
+                           }
+                           FlowData::Error(string) => FlowData::Error(string),
+                           _ => FlowData::Error("Unknown data".to_string()),
+                       };
+            }
+        }
+    }
+
+    fn set_input(&mut self, node: Rc<RefCell<Node>>) -> () {
+        self.input = Some(node);
+    }
+}
+
+struct Sum {
+    id: i64,
+    input: Option<Rc<RefCell<Node>>>,
+}
+
+impl Node for Sum {
+    fn id(&self) -> i64 {
+        self.id
+    }
+
+    fn pull(&mut self) -> FlowData {
+        match self.input {
+            None => return FlowData::Error("No input".to_string()),
+            Some(ref mut input) => {
+                let content = input.borrow_mut().pull();
+
+                return match content {
+                           FlowData::IntArray(ints) => {
+                               return FlowData::Int(ints.iter().sum());
+                           }
+                           FlowData::Error(string) => FlowData::Error(string),
+                           _ => FlowData::Error("Unknown data".to_string()),
+                       };
+            }
+        }
+    }
+
+    fn set_input(&mut self, node: Rc<RefCell<Node>>) -> () {
+        self.input = Some(node);
+    }
+}
+
+
+
+fn pull(node: &mut Node) -> FlowData {
     node.pull()
 }
 
@@ -101,6 +195,18 @@ fn build(entry: &Yaml) -> Option<Rc<RefCell<Node>>> {
         }
         (Some(id), Some("standard-out")) => {
             return Some(Rc::new(RefCell::new(StandardOut {
+                                                 id: id,
+                                                 input: None,
+                                             })));
+        }
+        (Some(id), Some("to-int")) => {
+            return Some(Rc::new(RefCell::new(ToInt {
+                                                 id: id,
+                                                 input: None,
+                                             })));
+        }
+        (Some(id), Some("sum")) => {
+            return Some(Rc::new(RefCell::new(Sum {
                                                  id: id,
                                                  input: None,
                                              })));
