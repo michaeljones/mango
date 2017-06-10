@@ -20,8 +20,10 @@ impl Node for StandardIn {
         let stdin = std::io::stdin();
         let mut stream = stdin.lock();
         let mut content = String::new();
-        stream.read_to_string(&mut content);
-        return FlowData::String(content);
+        return match stream.read_to_string(&mut content) {
+                   Ok(_) => FlowData::String(content),
+                   Err(_) => FlowData::Error("Failed to read from stdin".to_string()),
+               };
     }
 
     fn set_input(&mut self, _node: Rc<RefCell<Node>>) -> () {}
