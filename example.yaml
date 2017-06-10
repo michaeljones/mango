@@ -2,20 +2,14 @@
 nodes:
     - type: standard-in
       id: 1
-    - type: standard-out
-      id: 2
     - type: string-contains
-      id: 3
+      id: 2
       value: abc
+    - type: standard-out
+      id: 3
 
 connections:
-    - from: 
-          node: 1
-      to:
-          node: 2
-          input: 1
-    - from:
-          node: 2
-      to:
-          node: 3
-          input: 1
+    - from: 1
+      to: 2
+    - from: 2
+      to: 3
