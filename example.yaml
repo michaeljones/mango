@@ -2,9 +2,9 @@
 nodes:
     - type: standard-in
       id: 1
-    - type: to-int
+    - type: json-parse
       id: 2
-    - type: sum
+    - type: json-keys
       id: 4
     - type: standard-out
       id: 3

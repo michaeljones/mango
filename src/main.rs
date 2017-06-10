@@ -1,5 +1,7 @@
 
 extern crate yaml_rust;
+extern crate json;
+
 use yaml_rust::{Yaml, YamlLoader};
 use std::fs::File;
 use std::io::prelude::*;
@@ -11,10 +13,11 @@ use std::ops::DerefMut;
 #[derive(Debug)]
 enum FlowData {
     Error(String),
-    String,
+    String(String),
     StringArray(Vec<String>),
     Int(i64),
     IntArray(Vec<i64>),
+    Json(json::JsonValue),
 }
 
 trait Node {
@@ -33,13 +36,11 @@ impl Node for StandardIn {
     }
 
     fn pull(&mut self) -> FlowData {
-        let mut lines = vec![];
         let stdin = std::io::stdin();
-        let stream = stdin.lock();
-        for line in stream.lines() {
-            lines.push(line.unwrap());
-        }
-        return FlowData::StringArray(lines);
+        let mut stream = stdin.lock();
+        let mut content = String::new();
+        stream.read_to_string(&mut content);
+        return FlowData::String(content);
     }
 
     fn set_input(&mut self, _node: Rc<RefCell<Node>>) -> () {}
@@ -71,6 +72,113 @@ impl Node for StandardOut {
         self.input = Some(node);
     }
 }
+
+
+struct Lines {
+    id: i64,
+    input: Option<Rc<RefCell<Node>>>,
+}
+
+impl Node for Lines {
+    fn id(&self) -> i64 {
+        self.id
+    }
+    fn pull(&mut self) -> FlowData {
+        match self.input {
+            None => return FlowData::Error("No input".to_string()),
+            Some(ref mut input) => {
+                let content = input.borrow_mut().pull();
+
+                return match content {
+                           FlowData::String(text) => {
+                               let mut output = vec![];
+                               for i in text.lines() {
+                                   output.push(i.to_string());
+                               }
+                               return FlowData::StringArray(output);
+                           }
+                           FlowData::Error(string) => FlowData::Error(string),
+                           _ => FlowData::Error("Unknown data".to_string()),
+                       };
+            }
+        }
+    }
+
+    fn set_input(&mut self, node: Rc<RefCell<Node>>) -> () {
+        self.input = Some(node);
+    }
+}
+
+struct JsonParse {
+    id: i64,
+    input: Option<Rc<RefCell<Node>>>,
+}
+
+impl Node for JsonParse {
+    fn id(&self) -> i64 {
+        self.id
+    }
+    fn pull(&mut self) -> FlowData {
+        match self.input {
+            None => return FlowData::Error("No input".to_string()),
+            Some(ref mut input) => {
+                let content = input.borrow_mut().pull();
+
+                return match content {
+                           FlowData::String(text) => {
+                               match json::parse(&text) {
+                                   Ok(data) => FlowData::Json(data),
+                                   Err(_e) => FlowData::Error("Failed to parse json".to_string()),
+                               }
+                           }
+                           FlowData::Error(string) => FlowData::Error(string),
+                           _ => FlowData::Error("Unknown data".to_string()),
+                       };
+            }
+        }
+    }
+
+    fn set_input(&mut self, node: Rc<RefCell<Node>>) -> () {
+        self.input = Some(node);
+    }
+}
+
+
+struct JsonKeys {
+    id: i64,
+    input: Option<Rc<RefCell<Node>>>,
+}
+
+impl Node for JsonKeys {
+    fn id(&self) -> i64 {
+        self.id
+    }
+    fn pull(&mut self) -> FlowData {
+        match self.input {
+            None => return FlowData::Error("No input".to_string()),
+            Some(ref mut input) => {
+                let content = input.borrow_mut().pull();
+
+                return match content {
+                           FlowData::Json(data) => {
+                               let mut keys = vec![];
+                               for (key, _value) in data.entries() {
+                                   keys.push(key.to_string());
+                               }
+                               return FlowData::StringArray(keys);
+                           }
+                           FlowData::Error(string) => FlowData::Error(string),
+                           _ => FlowData::Error("Unknown data".to_string()),
+                       };
+            }
+        }
+    }
+
+    fn set_input(&mut self, node: Rc<RefCell<Node>>) -> () {
+        self.input = Some(node);
+    }
+}
+
 
 struct StringContains {
     id: i64,
@@ -199,6 +307,24 @@ fn build(entry: &Yaml) -> Option<Rc<RefCell<Node>>> {
                                                  input: None,
                                              })));
         }
+        (Some(id), Some("lines")) => {
+            return Some(Rc::new(RefCell::new(Lines {
+                                                 id: id,
+                                                 input: None,
+                                             })));
+        }
+        (Some(id), Some("json-parse")) => {
+            return Some(Rc::new(RefCell::new(JsonParse {
+                                                 id: id,
+                                                 input: None,
+                                             })));
+        }
+        (Some(id), Some("json-keys")) => {
+            return Some(Rc::new(RefCell::new(JsonKeys {
+                                                 id: id,
+                                                 input: None,
+                                             })));
+        }
         (Some(id), Some("to-int")) => {
             return Some(Rc::new(RefCell::new(ToInt {
                                                  id: id,
@@ -229,7 +355,7 @@ fn build(entry: &Yaml) -> Option<Rc<RefCell<Node>>> {
 fn connect(from: i64, to: i64, node_map: &HashMap<i64, Rc<RefCell<Node>>>) -> () {
     match (node_map.get(&from), node_map.get(&to)) {
         (Some(from_node), Some(to_node)) => to_node.borrow_mut().set_input(from_node.clone()),
-        _ => println!("Unable to find notes matching ids"),
+        _ => println!("Unable to find nodes matching ids: {:?} & {:?}", from, to),
     }
 }
 
