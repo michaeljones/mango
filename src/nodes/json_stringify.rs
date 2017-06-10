@@ -1,16 +1,18 @@
 
+extern crate json;
+
 use std::rc::Rc;
 use std::cell::RefCell;
 
 use Node;
 use FlowData;
 
-pub struct Sum {
+pub struct JsonStringify {
     pub id: i64,
     pub input: Option<Rc<RefCell<Node>>>,
 }
 
-impl Node for Sum {
+impl Node for JsonStringify {
     fn id(&self) -> i64 {
         self.id
     }
@@ -22,9 +24,7 @@ impl Node for Sum {
                 let content = input.borrow_mut().pull();
 
                 return match content {
-                           FlowData::IntArray(ints) => {
-                               return FlowData::Int(ints.iter().sum());
-                           }
+                           FlowData::Json(data) => FlowData::String(json::stringify(data)),
                            FlowData::Error(string) => FlowData::Error(string),
                            _ => FlowData::Error("Unknown data".to_string()),
                        };

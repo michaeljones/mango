@@ -9,6 +9,7 @@ use FlowData;
 
 pub struct StandardIn {
     pub id: i64,
+    pub cache: Option<FlowData>,
 }
 
 impl Node for StandardIn {
@@ -17,14 +18,21 @@ impl Node for StandardIn {
     }
 
     fn pull(&mut self) -> FlowData {
-        let stdin = std::io::stdin();
-        let mut stream = stdin.lock();
-        let mut content = String::new();
-        return match stream.read_to_string(&mut content) {
-                   Ok(_) => FlowData::String(content),
-                   Err(_) => FlowData::Error("Failed to read from stdin".to_string()),
-               };
+        match self.cache.clone() {
+            Some(response) => response,
+            None => {
+                let stdin = std::io::stdin();
+                let mut stream = stdin.lock();
+                let mut content = String::new();
+                let response = match stream.read_to_string(&mut content) {
+                    Ok(_) => FlowData::String(content),
+                    Err(_) => FlowData::Error("Failed to read from stdin".to_string()),
+                };
+                self.cache = Some(response.clone());
+                response
+            }
+        }
     }
 
-    fn set_input(&mut self, _node: Rc<RefCell<Node>>) -> () {}
+    fn set_input(&mut self, _node: Rc<RefCell<Node>>, _index: Option<i64>) -> () {}
 }

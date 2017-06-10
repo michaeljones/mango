@@ -36,7 +36,7 @@ impl Node for StandardOut {
         }
     }
 
-    fn set_input(&mut self, node: Rc<RefCell<Node>>) -> () {
+    fn set_input(&mut self, node: Rc<RefCell<Node>>, _index: Option<i64>) -> () {
         self.input = Some(node);
     }
 }

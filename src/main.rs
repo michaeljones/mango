@@ -16,12 +16,14 @@ use nodes::standard_in::StandardIn;
 use nodes::standard_out::StandardOut;
 use nodes::lines::Lines;
 use nodes::json_parse::JsonParse;
+use nodes::json_stringify::JsonStringify;
 use nodes::json_keys::JsonKeys;
+use nodes::json_object::JsonObject;
 use nodes::to_int::ToInt;
 use nodes::sum::Sum;
 use nodes::string_contains::StringContains;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum FlowData {
     None,
     Error(String),
@@ -35,7 +37,7 @@ pub enum FlowData {
 pub trait Node {
     fn id(&self) -> i64;
     fn pull(&mut self) -> FlowData;
-    fn set_input(&mut self, Rc<RefCell<Node>>) -> ();
+    fn set_input(&mut self, node: Rc<RefCell<Node>>, index: Option<i64>) -> ();
 }
 
 fn pull(node: &mut Node) -> FlowData {
@@ -45,7 +47,10 @@ fn pull(node: &mut Node) -> FlowData {
 fn build(entry: &Yaml) -> Option<Rc<RefCell<Node>>> {
     match (entry["id"].as_i64(), entry["type"].as_str()) {
         (Some(id), Some("standard-in")) => {
-            return Some(Rc::new(RefCell::new(StandardIn { id: id })));
+            return Some(Rc::new(RefCell::new(StandardIn {
+                                                 id: id,
+                                                 cache: None,
+                                             })));
         }
         (Some(id), Some("standard-out")) => {
             return Some(Rc::new(RefCell::new(StandardOut {
@@ -65,10 +70,23 @@ fn build(entry: &Yaml) -> Option<Rc<RefCell<Node>>> {
                                                  input: None,
                                              })));
         }
+        (Some(id), Some("json-stringify")) => {
+            return Some(Rc::new(RefCell::new(JsonStringify {
+                                                 id: id,
+                                                 input: None,
+                                             })));
+        }
         (Some(id), Some("json-keys")) => {
             return Some(Rc::new(RefCell::new(JsonKeys {
                                                  id: id,
                                                  input: None,
+                                             })));
+        }
+        (Some(id), Some("json-object")) => {
+            return Some(Rc::new(RefCell::new(JsonObject {
+                                                 id: id,
+                                                 keys_input: None,
+                                                 values_input: None,
                                              })));
         }
         (Some(id), Some("to-int")) => {
@@ -98,9 +116,17 @@ fn build(entry: &Yaml) -> Option<Rc<RefCell<Node>>> {
     }
 }
 
-fn connect(from: i64, to: i64, node_map: &HashMap<i64, Rc<RefCell<Node>>>) -> () {
+fn connect(from: i64,
+           _from_input: Option<i64>,
+           to: i64,
+           to_input: Option<i64>,
+           node_map: &HashMap<i64, Rc<RefCell<Node>>>)
+           -> () {
+
     match (node_map.get(&from), node_map.get(&to)) {
-        (Some(from_node), Some(to_node)) => to_node.borrow_mut().set_input(from_node.clone()),
+        (Some(from_node), Some(to_node)) => {
+            to_node.borrow_mut().set_input(from_node.clone(), to_input)
+        }
         _ => println!("Unable to find nodes matching ids: {:?} & {:?}", from, to),
     }
 }
@@ -139,9 +165,13 @@ fn main() {
     match yaml_connections {
         Some(ref connections) => {
             for connection in connections.iter() {
-                match (connection["from"].as_i64(), connection["to"].as_i64()) {
+                match (connection["from"]["node"].as_i64(), connection["to"]["node"].as_i64()) {
                     (Some(from), Some(to)) => {
-                        connect(from, to, &node_map);
+                        connect(from,
+                                connection["from"]["input"].as_i64(),
+                                to,
+                                connection["to"]["input"].as_i64(),
+                                &node_map);
                         if end_node_id == from {
                             end_node_id = to;
                         }
