@@ -3,6 +3,9 @@ extern crate yaml_rust;
 extern crate json;
 extern crate clap;
 
+#[macro_use]
+extern crate conrod;
+
 use yaml_rust::{Yaml, YamlLoader};
 use std::fs::File;
 use std::io::prelude::*;
@@ -13,6 +16,7 @@ use std::ops::DerefMut;
 use clap::{Arg, App, SubCommand};
 
 mod nodes;
+mod gui;
 
 use nodes::standard_in::StandardIn;
 use nodes::standard_out::StandardOut;
@@ -134,6 +138,8 @@ fn connect(from: i64,
 }
 
 fn main() {
+
+    gui::feature::gui();
 
     let matches = App::new("slipstream")
         .version("0.1")
