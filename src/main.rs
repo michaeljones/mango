@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::ops::DerefMut;
-use clap::{Arg, App, SubCommand};
+use clap::{Arg, App};
 
 mod nodes;
 mod gui;
