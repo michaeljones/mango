@@ -6,14 +6,27 @@
 //! example that does not depend on the `support` module.
 
 pub mod feature {
+
+    use std::rc::Rc;
+    use std::cell::RefCell;
+
     pub mod gui_node {
+        use std::rc::Rc;
+        use std::cell::RefCell;
         use conrod::{self, widget, Colorable, Dimensions, Labelable, Point, Positionable, Widget};
+
+        pub struct GuiNodeData {
+            pub id: conrod::widget::id::Id,
+            pub label: String,
+            pub x: f64,
+            pub y: f64,
+            pub origin_x: f64,
+            pub origin_y: f64,
+        }
 
         pub struct GuiNode {
             common: widget::CommonBuilder,
-            label: String,
-            x: f64,
-            y: f64,
+            data: Rc<RefCell<GuiNodeData>>,
             style: Style,
             enabled: bool,
         }
@@ -59,12 +72,10 @@ pub mod feature {
         }
 
         impl GuiNode {
-            pub fn new(label: String, x: f64, y: f64) -> Self {
+            pub fn new(data: Rc<RefCell<GuiNodeData>>) -> Self {
                 GuiNode {
                     common: widget::CommonBuilder::new(),
-                    label: label,
-                    x: x,
-                    y: y,
+                    data: data,
                     style: Style::new(),
                     enabled: true,
                 }
@@ -119,11 +130,33 @@ pub mod feature {
                     ..
                 } = args;
 
+                let mut data = self.data.borrow_mut();
+
                 let (color, event) = {
                     let input = ui.widget_input(id);
 
+                    for event in input.events() {
+                        match event {
+                            conrod::event::Widget::Drag(drag) => {
+                                data.x = data.origin_x + drag.total_delta_xy[0];
+                                data.y = data.origin_y - drag.total_delta_xy[1];
+                            }
+                            conrod::event::Widget::Release(press) => {
+                                match press.button {
+                                    conrod::event::Button::Mouse(_, point) => {
+                                        data.origin_x = data.x;
+                                        data.origin_y = data.y;
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+
                     // If the button was clicked, produce `Some` event.
                     let event = input.clicks().left().next().map(|_| ());
+
 
                     let color = style.color(&ui.theme);
                     let color = input
@@ -148,13 +181,14 @@ pub mod feature {
                 widget::Canvas::new()
                     .graphics_for(id)
                     .parent(parent_id)
-                    .top_left_with_margins_on(parent_id, self.y, self.x)
+                    .top_left_with_margins_on(parent_id, data.y as f64, data.x as f64)
                     .w(100.0)
                     .h(30.0)
                     .color(color::BLACK)
                     .set(state.ids.node, ui);
 
-                widget::primitive::text::Text::new(self.label.as_str())
+                widget::primitive::text::Text::new(data.label.as_str())
+                    .graphics_for(id)
                     .parent(state.ids.node)
                     .color(color::WHITE)
                     .middle_of(state.ids.node)
@@ -176,7 +210,6 @@ pub mod feature {
         /// configuration methods.
         impl<'a> Labelable<'a> for GuiNode {
             fn label(mut self, text: &'a str) -> Self {
-                self.label = text.to_string();
                 self
             }
             fn label_color(mut self, color: conrod::Color) -> Self {
@@ -195,8 +228,6 @@ pub mod feature {
     use conrod::backend::glium::glium::glutin;
     use conrod::backend::glium::glium::{DisplayBuild, Surface};
     use std;
-    use std::rc::Rc;
-    use std::cell::RefCell;
 
     widget_ids! {
         struct Ids {
@@ -208,21 +239,14 @@ pub mod feature {
         }
     }
 
-    struct GuiNode {
-        pub id: conrod::widget::id::Id,
-        pub name: String,
-        pub x: i32,
-        pub y: i32,
-    }
-
     struct Params {
         pub display_menu: bool,
-        pub mouse_x: i32,
-        pub mouse_y: i32,
-        pub tab_x: i32,
-        pub tab_y: i32,
+        pub mouse_x: f64,
+        pub mouse_y: f64,
+        pub tab_x: f64,
+        pub tab_y: f64,
         pub name_input: String,
-        pub gui_nodes: Vec<Rc<RefCell<GuiNode>>>,
+        pub gui_nodes: Vec<Rc<RefCell<gui_node::GuiNodeData>>>,
     }
 
     pub fn gui() {
@@ -262,10 +286,10 @@ pub mod feature {
 
         let mut params = Params {
             display_menu: false,
-            mouse_x: 0,
-            mouse_y: 0,
-            tab_x: 0,
-            tab_y: 0,
+            mouse_x: 0.0,
+            mouse_y: 0.0,
+            tab_x: 0.0,
+            tab_y: 0.0,
             name_input: String::new(),
             gui_nodes: vec![],
         };
@@ -313,8 +337,8 @@ pub mod feature {
                         params.tab_y = params.mouse_y;
                     }
                     glium::glutin::Event::MouseMoved(x, y) => {
-                        params.mouse_x = x;
-                        params.mouse_y = y;
+                        params.mouse_x = x as f64;
+                        params.mouse_y = y as f64;
                     }
                     _ => {}
                 }
@@ -370,10 +394,14 @@ pub mod feature {
         }
 
         for g_node in params.gui_nodes.iter() {
-            let node = g_node.borrow_mut();
-            gui_node::GuiNode::new(node.name.clone(), node.x as f64, node.y as f64)
+            let id;
+            {
+                let node = g_node.borrow();
+                id = node.id;
+            }
+            gui_node::GuiNode::new(g_node.clone())
                 .parent(ids.canvas)
-                .set(node.id, ui);
+                .set(id, ui);
         }
 
         widget::Scrollbar::y_axis(ids.canvas)
@@ -382,11 +410,13 @@ pub mod feature {
     }
 
     fn create_node(params: &mut Params, mut generator: conrod::widget::id::Generator) {
-        let g_node = Rc::new(RefCell::new(GuiNode {
+        let g_node = Rc::new(RefCell::new(gui_node::GuiNodeData {
                                               id: generator.next(),
-                                              name: params.name_input.clone(),
+                                              label: params.name_input.clone(),
                                               x: params.tab_x,
                                               y: params.tab_y,
+                                              origin_x: params.tab_x,
+                                              origin_y: params.tab_y,
                                           }));
 
         params.gui_nodes.push(g_node);
