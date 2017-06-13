@@ -8,9 +8,13 @@
 pub mod feature {
 
     use gui_node;
+    use build;
+    use Node;
 
     use std::rc::Rc;
     use std::cell::RefCell;
+    use std::collections::HashMap;
+    use std::ops::DerefMut;
 
     use conrod;
     use conrod::backend::glium::glium;
@@ -29,6 +33,7 @@ pub mod feature {
     }
 
     struct Params {
+        pub node_id: i64,
         pub display_menu: bool,
         pub mouse_x: f64,
         pub mouse_y: f64,
@@ -36,6 +41,8 @@ pub mod feature {
         pub tab_y: f64,
         pub name_input: String,
         pub gui_nodes: Vec<Rc<RefCell<gui_node::GuiNodeData>>>,
+        pub connect_node: Option<Rc<RefCell<gui_node::GuiNodeData>>>,
+        pub node_map: HashMap<i64, Rc<RefCell<Node>>>,
     }
 
     pub fn gui() {
@@ -74,6 +81,7 @@ pub mod feature {
         let mut ui_needs_update = true;
 
         let mut params = Params {
+            node_id: 0,
             display_menu: false,
             mouse_x: 0.0,
             mouse_y: 0.0,
@@ -81,6 +89,8 @@ pub mod feature {
             tab_y: 0.0,
             name_input: String::new(),
             gui_nodes: vec![],
+            connect_node: None,
+            node_map: HashMap::new(),
         };
 
         'main: loop {
@@ -118,9 +128,22 @@ pub mod feature {
                     // Break from the loop upon `Escape`.
                     glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape)) |
                     glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Q)) |
-                    glium::glutin::Event::Closed =>
-                        break 'main,
-                    glium::glutin::Event::KeyboardInput(glutin::ElementState::Released, _, Some(glium::glutin::VirtualKeyCode::Tab)) => {
+                    glium::glutin::Event::Closed => {
+                        if let Some(g_node) = params.gui_nodes.last() {
+                            if let Some(node) = params.node_map.get(&g_node.borrow().node_id) {
+                                build::pull(node.borrow_mut().deref_mut());
+                            }
+                            else {
+                                println!("failed to find node in node_map");
+                            }
+
+                        }
+                        else {
+                            println!("failed to find last node");
+                        }
+                        break 'main
+                    }
+                    glium::glutin::Event::KeyboardInput( glutin::ElementState::Released, _, Some(glium::glutin::VirtualKeyCode::Tab)) => {
                         params.display_menu = true;
                         params.tab_x = params.mouse_x;
                         params.tab_y = params.mouse_y;
@@ -159,7 +182,7 @@ pub mod feature {
             widget::Canvas::new()
                 .color(color::RED)
                 .pad(5.0)
-                .w(100.0)
+                .w(200.0)
                 .h(30.0)
                 .top_left_with_margins_on(ids.canvas, params.tab_y as f64, params.tab_x as f64)
                 .set(ids.name_input_background, ui);
@@ -184,13 +207,57 @@ pub mod feature {
 
         for g_node in params.gui_nodes.iter() {
             let id;
+            let node_id;
             {
                 let node = g_node.borrow();
                 id = node.id;
+                node_id = node.node_id;
             }
-            gui_node::GuiNode::new(g_node.clone())
-                .parent(ids.canvas)
-                .set(id, ui);
+            for event in gui_node::GuiNode::new(g_node.clone())
+                    .parent(ids.canvas)
+                    .set(id, ui) {
+                match event {
+                    gui_node::Event::None => {}
+                    ref e => {
+                        println!("{:?} {:?}", e, node_id);
+                    }
+                }
+                match event {
+                    gui_node::Event::ConnectOutput => {
+                        params.connect_node = Some(g_node.clone());
+                    }
+                    gui_node::Event::ConnectInput => {
+                        // conrod::input::global::Global&
+                        let global = ui.global_input();
+                        let ref state = global.current;
+                        let mut nnn = None;
+                        println!("Looking for node");
+                        for n in params.gui_nodes.iter() {
+                            if state
+                                   .widget_under_mouse
+                                   .map_or(false, |node_index| node_index == n.borrow().id) {
+                                nnn = Some(n.clone());
+                                println!("Found index");
+                            }
+                        }
+                        // println!("Under mouse {:?}", state.widget_under_mouse);
+                        match nnn {
+                            Some(ref node) => {
+                                println!("Connecting node");
+                                let mut nn = node.borrow();
+                                build::connect(node_id,
+                                               None,
+                                               nn.node_id,
+                                               Some(1),
+                                               &params.node_map);
+                            }
+                            None => {}
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
         }
 
         widget::Scrollbar::y_axis(ids.canvas)
@@ -199,15 +266,24 @@ pub mod feature {
     }
 
     fn create_node(params: &mut Params, mut generator: conrod::widget::id::Generator) {
-        let g_node = Rc::new(RefCell::new(gui_node::GuiNodeData {
-                                              id: generator.next(),
-                                              label: params.name_input.clone(),
-                                              x: params.tab_x,
-                                              y: params.tab_y,
-                                              origin_x: params.tab_x,
-                                              origin_y: params.tab_y,
-                                          }));
+        let id = params.node_id + 1;
+        params.node_id = params.node_id + 1;
+        let maybe_node = build::build(id, params.name_input.clone());
+        if let Some(node) = maybe_node {
+            let g_node = Rc::new(RefCell::new(gui_node::GuiNodeData {
+                                                  id: generator.next(),
+                                                  node_id: id,
+                                                  label: params.name_input.clone(),
+                                                  x: params.tab_x,
+                                                  y: params.tab_y,
+                                                  origin_x: params.tab_x,
+                                                  origin_y: params.tab_y,
+                                                  mode: gui_node::Mode::None,
+                                              }));
 
-        params.gui_nodes.push(g_node);
+            params.node_map.insert(id, node.clone());
+            params.gui_nodes.push(g_node);
+        }
     }
+
 }

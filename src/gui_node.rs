@@ -1,15 +1,25 @@
 
 use std::rc::Rc;
 use std::cell::RefCell;
+
 use conrod::{self, widget, Colorable, Dimensions, Labelable, Point, Positionable, Widget};
+
+#[derive(PartialEq)]
+pub enum Mode {
+    None,
+    Drag,
+    OutputConnection,
+}
 
 pub struct GuiNodeData {
     pub id: conrod::widget::id::Id,
+    pub node_id: i64,
     pub label: String,
     pub x: f64,
     pub y: f64,
     pub origin_x: f64,
     pub origin_y: f64,
+    pub mode: Mode,
 }
 
 pub struct GuiNode {
@@ -40,23 +50,14 @@ widget_ids! {
     struct Ids {
         node,
         text,
+        input_button,
+        output_button,
+        body,
     }
 }
 
 pub struct State {
     ids: Ids,
-}
-
-pub fn is_over_circ(circ_center: Point, mouse_point: Point, dim: Dimensions) -> bool {
-    // Offset vector from the center of the circle to the mouse.
-    let offset = conrod::utils::vec2_sub(mouse_point, circ_center);
-
-    // If the length of the offset vector is less than or equal to the circle's
-    // radius, then the mouse is inside the circle. We assume that dim is a square
-    // bounding box around the circle, thus 2 * radius == dim[0] == dim[1].
-    let distance = (offset[0].powf(2.0) + offset[1].powf(2.0)).sqrt();
-    let radius = dim[0] / 2.0;
-    distance <= radius
 }
 
 impl GuiNode {
@@ -75,6 +76,13 @@ impl GuiNode {
     }
 }
 
+#[derive(Debug)]
+pub enum Event {
+    None,
+    ConnectInput,
+    ConnectOutput,
+}
+
 /// A custom Conrod widget must implement the Widget trait. See the **Widget** trait
 /// documentation for more details.
 impl Widget for GuiNode {
@@ -85,7 +93,7 @@ impl Widget for GuiNode {
     /// The event produced by instantiating the widget.
     ///
     /// `Some` when clicked, otherwise `None`.
-    type Event = Option<()>;
+    type Event = Option<Event>;
 
     fn common(&self) -> &widget::CommonBuilder {
         &self.common
@@ -119,21 +127,41 @@ impl Widget for GuiNode {
         } = args;
 
         let mut data = self.data.borrow_mut();
+        let mut output_event = Event::None;
 
-        let (color, event) = {
+        {
             let input = ui.widget_input(id);
 
             for event in input.events() {
                 match event {
                     conrod::event::Widget::Drag(drag) => {
-                        data.x = data.origin_x + drag.total_delta_xy[0];
-                        data.y = data.origin_y - drag.total_delta_xy[1];
+                        if data.mode == Mode::Drag {
+                            data.x = data.origin_x + drag.total_delta_xy[0];
+                            data.y = data.origin_y - drag.total_delta_xy[1];
+                        }
                     }
-                    conrod::event::Widget::Release(press) => {
+                    conrod::event::Widget::Press(press) => {
                         match press.button {
                             conrod::event::Button::Mouse(_, point) => {
-                                data.origin_x = data.x;
-                                data.origin_y = data.y;
+                                if press.modifiers.contains(conrod::input::keyboard::CTRL) {
+                                    data.mode = Mode::OutputConnection;
+                                    output_event = Event::ConnectOutput;
+                                } else {
+                                    data.mode = Mode::Drag;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    conrod::event::Widget::Release(release) => {
+                        match release.button {
+                            conrod::event::Button::Mouse(_, point) => {
+                                if release.modifiers.contains(conrod::input::keyboard::CTRL) {
+                                    output_event = Event::ConnectInput;
+                                } else {
+                                    data.origin_x = data.x;
+                                    data.origin_y = data.y;
+                                }
                             }
                             _ => {}
                         }
@@ -141,27 +169,7 @@ impl Widget for GuiNode {
                     _ => {}
                 }
             }
-
-            // If the button was clicked, produce `Some` event.
-            let event = input.clicks().left().next().map(|_| ());
-
-
-            let color = style.color(&ui.theme);
-            let color = input
-                .mouse()
-                .map_or(color,
-                        |mouse| if is_over_circ([0.0, 0.0], mouse.rel_xy(), rect.dim()) {
-                            if mouse.buttons.left().is_down() {
-                                color.clicked()
-                            } else {
-                                color.highlighted()
-                            }
-                        } else {
-                            color
-                        });
-
-            (color, event)
-        };
+        }
 
         let parent_id = maybe_parent_id.unwrap_or(id);
 
@@ -170,19 +178,42 @@ impl Widget for GuiNode {
             .graphics_for(id)
             .parent(parent_id)
             .top_left_with_margins_on(parent_id, data.y as f64, data.x as f64)
-            .w(100.0)
+            .w(140.0)
             .h(30.0)
+            .flow_right(&[(state.ids.input_button,
+                           widget::Canvas::new()
+                               .graphics_for(id)
+                               .parent(state.ids.node)
+                               .w(20.0)
+                               .h(30.0)
+                               .color(color::RED)),
+
+                          (state.ids.body,
+                           widget::Canvas::new()
+                               .graphics_for(id)
+                               .parent(state.ids.node)
+                               .w(100.0)
+                               .h(30.0)
+                               .color(color::BLACK)),
+
+                          (state.ids.output_button,
+                           widget::Canvas::new()
+                               .graphics_for(id)
+                               .parent(state.ids.node)
+                               .w(20.0)
+                               .h(30.0)
+                               .color(color::BLUE))])
             .color(color::BLACK)
             .set(state.ids.node, ui);
 
         widget::primitive::text::Text::new(data.label.as_str())
             .graphics_for(id)
-            .parent(state.ids.node)
+            .parent(state.ids.body)
             .color(color::WHITE)
-            .middle_of(state.ids.node)
+            .middle_of(state.ids.body)
             .set(state.ids.text, ui);
 
-        event
+        Some(output_event)
     }
 }
 

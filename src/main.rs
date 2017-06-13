@@ -18,17 +18,7 @@ use clap::{Arg, App};
 mod nodes;
 mod gui;
 mod gui_node;
-
-use nodes::standard_in::StandardIn;
-use nodes::standard_out::StandardOut;
-use nodes::lines::Lines;
-use nodes::json_parse::JsonParse;
-use nodes::json_stringify::JsonStringify;
-use nodes::json_keys::JsonKeys;
-use nodes::json_object::JsonObject;
-use nodes::to_int::ToInt;
-use nodes::sum::Sum;
-use nodes::string_contains::StringContains;
+mod build;
 
 #[derive(Debug, Clone)]
 pub enum FlowData {
@@ -51,97 +41,11 @@ fn pull(node: &mut Node) -> FlowData {
     node.pull()
 }
 
-fn build(entry: &Yaml) -> Option<Rc<RefCell<Node>>> {
-    match (entry["id"].as_i64(), entry["type"].as_str()) {
-        (Some(id), Some("standard-in")) => {
-            return Some(Rc::new(RefCell::new(StandardIn {
-                                                 id: id,
-                                                 cache: None,
-                                             })));
-        }
-        (Some(id), Some("standard-out")) => {
-            return Some(Rc::new(RefCell::new(StandardOut {
-                                                 id: id,
-                                                 input: None,
-                                             })));
-        }
-        (Some(id), Some("lines")) => {
-            return Some(Rc::new(RefCell::new(Lines {
-                                                 id: id,
-                                                 input: None,
-                                             })));
-        }
-        (Some(id), Some("json-parse")) => {
-            return Some(Rc::new(RefCell::new(JsonParse {
-                                                 id: id,
-                                                 input: None,
-                                             })));
-        }
-        (Some(id), Some("json-stringify")) => {
-            return Some(Rc::new(RefCell::new(JsonStringify {
-                                                 id: id,
-                                                 input: None,
-                                             })));
-        }
-        (Some(id), Some("json-keys")) => {
-            return Some(Rc::new(RefCell::new(JsonKeys {
-                                                 id: id,
-                                                 input: None,
-                                             })));
-        }
-        (Some(id), Some("json-object")) => {
-            return Some(Rc::new(RefCell::new(JsonObject {
-                                                 id: id,
-                                                 keys_input: None,
-                                                 values_input: None,
-                                             })));
-        }
-        (Some(id), Some("to-int")) => {
-            return Some(Rc::new(RefCell::new(ToInt {
-                                                 id: id,
-                                                 input: None,
-                                             })));
-        }
-        (Some(id), Some("sum")) => {
-            return Some(Rc::new(RefCell::new(Sum {
-                                                 id: id,
-                                                 input: None,
-                                             })));
-        }
-        (Some(id), Some("string-contains")) => {
-            if let Some(value) = entry["value"].as_str() {
-                return Some(Rc::new(RefCell::new(StringContains {
-                                                     id: id,
-                                                     input: None,
-                                                     value: value.to_string(),
-                                                 })));
-            } else {
-                return None;
-            }
-        }
-        _ => return None,
-    }
-}
-
-fn connect(from: i64,
-           _from_input: Option<i64>,
-           to: i64,
-           to_input: Option<i64>,
-           node_map: &HashMap<i64, Rc<RefCell<Node>>>)
-           -> () {
-
-    match (node_map.get(&from), node_map.get(&to)) {
-        (Some(from_node), Some(to_node)) => {
-            to_node.borrow_mut().set_input(from_node.clone(), to_input)
-        }
-        _ => println!("Unable to find nodes matching ids: {:?} & {:?}", from, to),
-    }
-}
-
 fn main() {
 
     gui::feature::gui();
 
+    /*
     let matches = App::new("slipstream")
         .version("0.1")
         .author("Michael Jones")
@@ -167,11 +71,16 @@ fn main() {
     match yaml_nodes {
         Some(ref entries) => {
             for entry in entries.iter() {
-                if let Some(node) = build(entry) {
-                    built_nodes.push(node.clone());
-                    node_map.insert(node.borrow_mut().id(), node.clone());
-                } else {
-                    println!("Failed to build {:?}", entry)
+                match (entry["id"].as_i64(), entry["type"].as_str()) {
+                    (Some(id), Some(type_)) => {
+                        if let Some(node) = build::build(id, type_.to_string()) {
+                            built_nodes.push(node.clone());
+                            node_map.insert(node.borrow_mut().id(), node.clone());
+                        } else {
+                            println!("Failed to build {:?}", entry)
+                        }
+                    }
+                    _ => {}
                 }
             }
         }
@@ -187,11 +96,11 @@ fn main() {
             for connection in connections.iter() {
                 match (connection["from"]["node"].as_i64(), connection["to"]["node"].as_i64()) {
                     (Some(from), Some(to)) => {
-                        connect(from,
-                                connection["from"]["input"].as_i64(),
-                                to,
-                                connection["to"]["input"].as_i64(),
-                                &node_map);
+                        build::connect(from,
+                                       connection["from"]["input"].as_i64(),
+                                       to,
+                                       connection["to"]["input"].as_i64(),
+                                       &node_map);
                         if end_node_id == from {
                             end_node_id = to;
                         }
@@ -208,4 +117,5 @@ fn main() {
     } else {
         println!("Unable to find end node");
     }
+    */
 }
