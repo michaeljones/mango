@@ -17,6 +17,7 @@ use clap::{Arg, App};
 
 mod nodes;
 mod gui;
+mod gui_node;
 
 use nodes::standard_in::StandardIn;
 use nodes::standard_out::StandardOut;
