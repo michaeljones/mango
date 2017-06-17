@@ -233,8 +233,6 @@ pub mod feature {
         }
 
         fn in_box(mouse_xy: &conrod::position::Point, node_x: f64, node_y: f64) -> bool {
-            println!("mouse {:?}", mouse_xy);
-            println!("xy {:?} {:?}", node_x, node_y);
             return if mouse_xy[0] < (node_x - 400.0) || mouse_xy[0] > ((node_x - 400.0) + 140.0) {
                        false
                    } else if mouse_xy[1] > ((600.0 - node_y) - 300.0) ||
@@ -260,14 +258,12 @@ pub mod feature {
                     .set(id, ui) {
                 match event {
                     gui_node::Event::ConnectOutput => {
-                        println!("Connect output");
                         let global = ui.global_input();
                         let ref state = global.current;
                         params.connect_node = Some(g_node.clone());
                         params.current_connection = Some(state.mouse.xy);
                     }
                     gui_node::Event::ConnectInput => {
-                        println!("Connect input");
 
                         let mut nnn: Option<Rc<RefCell<gui_node::GuiNodeData>>> = None;
 
@@ -285,17 +281,10 @@ pub mod feature {
                                         (Some(ref gui_node),
                                          Some(&conrod::graph::Node::Widget(ref container))) => {
                                             let m = gui_node.borrow();
-                                            println!("Found node {:?} {:?}",
-                                                     container.rect,
-                                                     gui_node);
                                             if in_box(&state.mouse.xy, m.x, m.y) {
                                                 nnn = Some(gui_node.clone());
                                                 break;
-                                            } else {
-                                                println!("not in box");
                                             }
-
-                                            // nnn = Some(node.clone());
                                         }
                                         _ => {
                                             println!("No match");
@@ -306,21 +295,7 @@ pub mod feature {
                                 }
                             }
 
-                            // let global = ui.global_input();
-                            // let ref state = global.current;
-                            // for n in params.gui_nodes.iter() {
-                            //     println!("Looking for node");
-                            //     println!("{:?}", state.widget_under_mouse);
-                            //     if state
-                            //            .widget_under_mouse
-                            //            .map_or(false,
-                            //                    |node_index| node_index == n.borrow().id) {
-                            //         println!("Found node");
-                            //         nnn = Some(n.clone());
-                            //     }
-                            // }
                         }
-                        // use std::borrow::Borrow;
                         match nnn {
                             Some(ref node) => {
                                 let nn = node.borrow();
