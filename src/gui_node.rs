@@ -174,16 +174,14 @@ impl Widget for GuiNode {
                            widget::Canvas::new()
                                .graphics_for(id)
                                .parent(state.ids.node)
-                               .w(20.0)
-                               .h(30.0)
+                               .length(20.0)
                                .color(color::RED)),
 
                           (state.ids.body,
                            widget::Canvas::new()
                                .graphics_for(id)
                                .parent(state.ids.node)
-                               .w(100.0)
-                               .h(30.0)
+                               .length(100.0)
                                .color(color::BLACK)
                                .and_if(self.selected, |w| w.rgb(0.5, 0.5, 0.5))),
 
@@ -191,18 +189,17 @@ impl Widget for GuiNode {
                            widget::Canvas::new()
                                .graphics_for(id)
                                .parent(state.ids.node)
-                               .w(20.0)
-                               .h(30.0)
+                               .length(20.0)
                                .color(color::BLUE))])
             .set(state.ids.node, ui);
 
         widget::primitive::text::Text::new(data.label.as_str())
             .graphics_for(id)
             .parent(state.ids.body)
-            .w(140.0)
-            .h(30.0)
+            .w(100.0)
             .color(color::WHITE)
             .middle_of(state.ids.body)
+            .no_line_wrap()
             .set(state.ids.text, ui);
 
         Some(output_event)

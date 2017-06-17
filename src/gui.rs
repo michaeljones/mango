@@ -374,10 +374,11 @@ pub mod feature {
                 (Some(a), Some(b)) => {
                     let an = a.borrow();
                     let bn = b.borrow();
-                    let start = [an.x - 400.0 + 140.0, (600.0 - an.y) - 300.0 - 15.0];
-                    let end = [bn.x - 400.0, (600.0 - bn.y) - 300.0 - 15.0];
+                    let start = [an.x - 400.0 + 140.0 - 10.0, (600.0 - an.y) - 300.0 - 15.0];
+                    let end = [bn.x - 400.0 + 10.0, (600.0 - bn.y) - 300.0 - 15.0];
                     widget::primitive::line::Line::new(start, end)
                         .top_left_of(ids.canvas)
+                        .thickness(2.0)
                         .set(connection.id, ui);
                 }
                 _ => {

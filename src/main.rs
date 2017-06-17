@@ -31,6 +31,5 @@ pub trait Node {
 }
 
 fn main() {
-
     gui::feature::gui();
 }
