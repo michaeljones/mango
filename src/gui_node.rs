@@ -4,13 +4,14 @@ use std::cell::RefCell;
 
 use conrod::{self, widget, Colorable, Dimensions, Labelable, Point, Positionable, Widget};
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Mode {
     None,
     Drag,
     OutputConnection,
 }
 
+#[derive(Debug)]
 pub struct GuiNodeData {
     pub id: conrod::widget::id::Id,
     pub node_id: i64,
@@ -209,6 +210,8 @@ impl Widget for GuiNode {
         widget::primitive::text::Text::new(data.label.as_str())
             .graphics_for(id)
             .parent(state.ids.body)
+            .w(140.0)
+            .h(30.0)
             .color(color::WHITE)
             .middle_of(state.ids.body)
             .set(state.ids.text, ui);

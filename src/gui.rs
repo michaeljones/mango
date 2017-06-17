@@ -15,12 +15,20 @@ pub mod feature {
     use std::cell::RefCell;
     use std::collections::HashMap;
     use std::ops::DerefMut;
+    use std::ops::Deref;
 
     use conrod;
     use conrod::backend::glium::glium;
     use conrod::backend::glium::glium::glutin;
     use conrod::backend::glium::glium::{DisplayBuild, Surface};
+    use conrod::graph::Walker;
     use std;
+
+    struct Connection {
+        id: conrod::widget::id::Id,
+        from: i64,
+        to: i64,
+    }
 
     widget_ids! {
         struct Ids {
@@ -28,7 +36,8 @@ pub mod feature {
             text_edit,
             scrollbar,
             name_input_background,
-            nodes[]
+            nodes[],
+            line,
         }
     }
 
@@ -43,6 +52,8 @@ pub mod feature {
         pub gui_nodes: Vec<Rc<RefCell<gui_node::GuiNodeData>>>,
         pub connect_node: Option<Rc<RefCell<gui_node::GuiNodeData>>>,
         pub node_map: HashMap<i64, Rc<RefCell<Node>>>,
+        pub current_connection: Option<conrod::position::Point>,
+        pub connections: Vec<Connection>,
     }
 
     pub fn gui() {
@@ -91,6 +102,8 @@ pub mod feature {
             gui_nodes: vec![],
             connect_node: None,
             node_map: HashMap::new(),
+            current_connection: None,
+            connections: vec![],
         };
 
         'main: loop {
@@ -178,6 +191,7 @@ pub mod feature {
             .color(color::DARK_CHARCOAL)
             .set(ids.canvas, ui);
 
+
         if params.display_menu {
             widget::Canvas::new()
                 .color(color::RED)
@@ -205,6 +219,32 @@ pub mod feature {
             }
         }
 
+        fn find_gui_node(id: conrod::widget::id::Id,
+                         nodes: &Vec<Rc<RefCell<gui_node::GuiNodeData>>>)
+                         -> Option<Rc<RefCell<gui_node::GuiNodeData>>> {
+            // use std::borrow::Borrow;
+            for node in nodes {
+                let n = node.borrow();
+                if n.id == id {
+                    return Some(node.clone());
+                }
+            }
+            None
+        }
+
+        fn in_box(mouse_xy: &conrod::position::Point, node_x: f64, node_y: f64) -> bool {
+            println!("mouse {:?}", mouse_xy);
+            println!("xy {:?} {:?}", node_x, node_y);
+            return if mouse_xy[0] < (node_x - 400.0) || mouse_xy[0] > ((node_x - 400.0) + 140.0) {
+                       false
+                   } else if mouse_xy[1] > ((600.0 - node_y) - 300.0) ||
+                             mouse_xy[1] < (((600.0 - node_y) - 300.0) - 30.0) {
+                       false
+                   } else {
+                       true
+                   };
+        }
+
         for g_node in params.gui_nodes.iter() {
             let id;
             let node_id;
@@ -215,49 +255,146 @@ pub mod feature {
             }
             for event in gui_node::GuiNode::new(g_node.clone())
                     .parent(ids.canvas)
+                    .w(140.0)
+                    .h(30.0)
                     .set(id, ui) {
                 match event {
-                    gui_node::Event::None => {}
-                    ref e => {
-                        println!("{:?} {:?}", e, node_id);
-                    }
-                }
-                match event {
                     gui_node::Event::ConnectOutput => {
-                        params.connect_node = Some(g_node.clone());
-                    }
-                    gui_node::Event::ConnectInput => {
-                        // conrod::input::global::Global&
+                        println!("Connect output");
                         let global = ui.global_input();
                         let ref state = global.current;
-                        let mut nnn = None;
-                        println!("Looking for node");
-                        for n in params.gui_nodes.iter() {
-                            if state
-                                   .widget_under_mouse
-                                   .map_or(false, |node_index| node_index == n.borrow().id) {
-                                nnn = Some(n.clone());
-                                println!("Found index");
+                        params.connect_node = Some(g_node.clone());
+                        params.current_connection = Some(state.mouse.xy);
+                    }
+                    gui_node::Event::ConnectInput => {
+                        println!("Connect input");
+
+                        let mut nnn: Option<Rc<RefCell<gui_node::GuiNodeData>>> = None;
+
+                        {
+                            let graph = ui.widget_graph();
+                            let mut walker = graph.children(ids.canvas);
+                            let global = ui.global_input();
+                            let ref state = global.current;
+                            loop {
+                                // Walk the graph to find all nodes
+                                if let Some(node_index) = walker.next_node(graph) {
+                                    // If the node index corresponds to a gui_node
+                                    match (find_gui_node(node_index, &params.gui_nodes),
+                                           graph.node(node_index)) {
+                                        (Some(ref gui_node),
+                                         Some(&conrod::graph::Node::Widget(ref container))) => {
+                                            let m = gui_node.borrow();
+                                            println!("Found node {:?} {:?}",
+                                                     container.rect,
+                                                     gui_node);
+                                            if in_box(&state.mouse.xy, m.x, m.y) {
+                                                nnn = Some(gui_node.clone());
+                                                break;
+                                            } else {
+                                                println!("not in box");
+                                            }
+
+                                            // nnn = Some(node.clone());
+                                        }
+                                        _ => {
+                                            println!("No match");
+                                        }
+                                    }
+                                } else {
+                                    break;
+                                }
                             }
+
+                            // let global = ui.global_input();
+                            // let ref state = global.current;
+                            // for n in params.gui_nodes.iter() {
+                            //     println!("Looking for node");
+                            //     println!("{:?}", state.widget_under_mouse);
+                            //     if state
+                            //            .widget_under_mouse
+                            //            .map_or(false,
+                            //                    |node_index| node_index == n.borrow().id) {
+                            //         println!("Found node");
+                            //         nnn = Some(n.clone());
+                            //     }
+                            // }
                         }
-                        // println!("Under mouse {:?}", state.widget_under_mouse);
+                        // use std::borrow::Borrow;
                         match nnn {
                             Some(ref node) => {
-                                println!("Connecting node");
-                                let mut nn = node.borrow();
+                                let nn = node.borrow();
                                 build::connect(node_id,
                                                None,
                                                nn.node_id,
                                                Some(1),
                                                &params.node_map);
+                                let connection_id;
+                                {
+                                    let mut generator = ui.widget_id_generator();
+                                    connection_id = generator.next();
+                                }
+                                params
+                                    .connections
+                                    .push(Connection {
+                                              id: connection_id,
+                                              from: node_id,
+                                              to: nn.node_id,
+                                          });
                             }
                             None => {}
                         }
+                        params.current_connection = None;
                     }
                     _ => {}
                 }
             }
 
+        }
+
+        match params.current_connection {
+            Some(xy) => {
+                let point;
+                {
+                    let global = ui.global_input();
+                    let ref state = global.current;
+                    point = [state.mouse.xy[0], state.mouse.xy[1]]
+                }
+                widget::primitive::line::Line::new(xy, point)
+                    .top_left_of(ids.canvas)
+                    .set(ids.line, ui);
+            }
+            None => {}
+        }
+
+        fn find_node(id: i64,
+                     nodes: &Vec<Rc<RefCell<gui_node::GuiNodeData>>>)
+                     -> Option<Rc<RefCell<gui_node::GuiNodeData>>> {
+            for node in nodes {
+                let n = node.borrow();
+                if n.node_id == id {
+                    return Some(node.clone());
+                }
+            }
+            None
+        }
+
+        for connection in &params.connections {
+            match (find_node(connection.from, &params.gui_nodes),
+                   find_node(connection.to, &params.gui_nodes)) {
+                (Some(a), Some(b)) => {
+                    let an = a.borrow();
+                    let bn = b.borrow();
+                    let start = [an.x, an.y];
+                    let end = [bn.x, bn.y];
+                    widget::primitive::line::Line::new(start, end)
+                        .top_left_of(ids.canvas)
+                        .set(connection.id, ui);
+                }
+                _ => {
+                    println!("Failed to find nodes");
+                }
+            }
         }
 
         widget::Scrollbar::y_axis(ids.canvas)
