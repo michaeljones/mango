@@ -2,7 +2,7 @@
 use std::rc::Rc;
 use std::cell::RefCell;
 
-use conrod::{self, widget, Colorable, Dimensions, Labelable, Point, Positionable, Widget};
+use conrod::{self, widget, Colorable, Positionable, Widget};
 
 #[derive(Debug, PartialEq)]
 pub enum Mode {
@@ -27,7 +27,6 @@ pub struct GuiNode {
     common: widget::CommonBuilder,
     data: Rc<RefCell<GuiNodeData>>,
     style: Style,
-    enabled: bool,
 }
 
 // We use the `widget_style!` macro to vastly simplify the definition and implementation of the
@@ -37,10 +36,6 @@ pub struct GuiNode {
 // See the documenation of the macro for a more details.
 widget_style! {
     style Style {
-        - color: conrod::Color { theme.shape_color }
-        - label_color: conrod::Color { theme.label_color }
-        - label_font_size: conrod::FontSize { theme.font_size_medium }
-        - label_font_id: Option<conrod::text::font::Id> { theme.font_id }
     }
 }
 
@@ -67,13 +62,7 @@ impl GuiNode {
             common: widget::CommonBuilder::new(),
             data: data,
             style: Style::new(),
-            enabled: true,
         }
-    }
-
-    pub fn label_font_id(mut self, font_id: conrod::text::font::Id) -> Self {
-        self.style.label_font_id = Some(Some(font_id));
-        self
     }
 }
 
@@ -121,9 +110,7 @@ impl Widget for GuiNode {
             id,
             maybe_parent_id,
             state,
-            rect,
             mut ui,
-            style,
             ..
         } = args;
 
@@ -143,7 +130,7 @@ impl Widget for GuiNode {
                     }
                     conrod::event::Widget::Press(press) => {
                         match press.button {
-                            conrod::event::Button::Mouse(_, point) => {
+                            conrod::event::Button::Mouse(_, _) => {
                                 if press.modifiers.contains(conrod::input::keyboard::CTRL) {
                                     data.mode = Mode::OutputConnection;
                                     output_event = Event::ConnectOutput;
@@ -156,7 +143,7 @@ impl Widget for GuiNode {
                     }
                     conrod::event::Widget::Release(release) => {
                         match release.button {
-                            conrod::event::Button::Mouse(_, point) => {
+                            conrod::event::Button::Mouse(_, _) => {
                                 if release.modifiers.contains(conrod::input::keyboard::CTRL) {
                                     output_event = Event::ConnectInput;
                                 } else {
@@ -217,29 +204,5 @@ impl Widget for GuiNode {
             .set(state.ids.text, ui);
 
         Some(output_event)
-    }
-}
-
-/// Provide the chainable color() configuration method.
-impl Colorable for GuiNode {
-    fn color(mut self, color: conrod::Color) -> Self {
-        self.style.color = Some(color);
-        self
-    }
-}
-
-/// Provide the chainable label(), label_color(), and label_font_size()
-/// configuration methods.
-impl<'a> Labelable<'a> for GuiNode {
-    fn label(mut self, text: &'a str) -> Self {
-        self
-    }
-    fn label_color(mut self, color: conrod::Color) -> Self {
-        self.style.label_color = Some(color);
-        self
-    }
-    fn label_font_size(mut self, size: conrod::FontSize) -> Self {
-        self.style.label_font_size = Some(size);
-        self
     }
 }

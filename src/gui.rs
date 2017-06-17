@@ -15,11 +15,9 @@ pub mod feature {
     use std::cell::RefCell;
     use std::collections::HashMap;
     use std::ops::DerefMut;
-    use std::ops::Deref;
 
     use conrod;
     use conrod::backend::glium::glium;
-    use conrod::backend::glium::glium::glutin;
     use conrod::backend::glium::glium::{DisplayBuild, Surface};
     use conrod::graph::Walker;
     use std;
