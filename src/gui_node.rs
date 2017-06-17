@@ -178,14 +178,14 @@ impl Widget for GuiNode {
                                .graphics_for(id)
                                .parent(state.ids.node)
                                .length(20.0)
-                               .color(color::RED)),
+                               .rgb(159.0 / 256.0, 168.0 / 256.0, 171.0 / 256.0)),
 
                           (state.ids.body,
                            widget::Canvas::new()
                                .graphics_for(id)
                                .parent(state.ids.node)
                                .length(100.0)
-                               .color(color::BLACK)
+                               .rgb(91.0 / 256.0, 103.0 / 256.0, 107.0 / 256.0)
                                .and_if(self.selected, |w| w.rgb(0.5, 0.5, 0.5))),
 
                           (state.ids.output_button,
@@ -193,7 +193,7 @@ impl Widget for GuiNode {
                                .graphics_for(id)
                                .parent(state.ids.node)
                                .length(20.0)
-                               .color(color::BLUE))])
+                               .rgb(113.0 / 256.0, 158.0 / 256.0, 171.0 / 256.0))])
             .set(state.ids.node, ui);
 
         widget::primitive::text::Text::new(data.label.as_str())
