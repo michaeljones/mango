@@ -224,7 +224,6 @@ pub mod feature {
             .color(color::DARK_CHARCOAL)
             .set(ids.canvas, ui);
 
-
         if params.display_menu {
             widget::Canvas::new()
                 .color(color::RED)
@@ -376,6 +375,24 @@ pub mod feature {
             None
         }
 
+        fn calculate_point_path(start: conrod::position::Point,
+                                end: conrod::position::Point)
+                                -> Vec<conrod::position::Point> {
+            if end[0] >= start[0] + 40.0 {
+                let x_halfway = (start[0] + end[0]) / 2.0;
+                vec![start, [x_halfway, start[1]], [x_halfway, end[1]], end]
+            } else {
+                let y_halfway = (start[1] + end[1]) / 2.0;
+                vec![start,
+                     [start[0] + 20.0, start[1]],
+                     [start[0] + 20.0, y_halfway],
+                     [end[0] - 20.0, y_halfway],
+                     [end[0] - 20.0, end[1]],
+                     end]
+            }
+        }
+
+
         for connection in &params.connections {
             match (find_node(connection.from, &params.gui_nodes),
                    find_node(connection.to, &params.gui_nodes)) {
@@ -384,7 +401,8 @@ pub mod feature {
                     let bn = b.borrow();
                     let start = [an.x + 70.0 - 10.0, an.y];
                     let end = [bn.x - 70.0 + 10.0, bn.y];
-                    widget::primitive::line::Line::new(start, end)
+                    let points = calculate_point_path(start, end);
+                    widget::primitive::point_path::PointPath::new(points)
                         .top_left_of(ids.canvas)
                         .thickness(2.0)
                         .set(connection.id, ui);
