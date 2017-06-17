@@ -6,5 +6,5 @@ authors = ["Michael Jones <m.pricejones@gmail.com>"]
 [dependencies]
 yaml-rust = "*"
 json = "*"
-conrod = "*"
+conrod = { version = "*", features = ["winit", "glium"] }
 clap = "*"
