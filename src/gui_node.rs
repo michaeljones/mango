@@ -27,6 +27,7 @@ pub struct GuiNode {
     common: widget::CommonBuilder,
     data: Rc<RefCell<GuiNodeData>>,
     style: Style,
+    selected: bool,
 }
 
 // We use the `widget_style!` macro to vastly simplify the definition and implementation of the
@@ -57,11 +58,12 @@ pub struct State {
 }
 
 impl GuiNode {
-    pub fn new(data: Rc<RefCell<GuiNodeData>>) -> Self {
+    pub fn new(data: Rc<RefCell<GuiNodeData>>, selected: bool) -> Self {
         GuiNode {
             common: widget::CommonBuilder::new(),
             data: data,
             style: Style::new(),
+            selected: selected,
         }
     }
 }
@@ -182,7 +184,8 @@ impl Widget for GuiNode {
                                .parent(state.ids.node)
                                .w(100.0)
                                .h(30.0)
-                               .color(color::BLACK)),
+                               .color(color::BLACK)
+                               .and_if(self.selected, |w| w.rgb(0.5, 0.5, 0.5))),
 
                           (state.ids.output_button,
                            widget::Canvas::new()
@@ -191,7 +194,6 @@ impl Widget for GuiNode {
                                .w(20.0)
                                .h(30.0)
                                .color(color::BLUE))])
-            .color(color::BLACK)
             .set(state.ids.node, ui);
 
         widget::primitive::text::Text::new(data.label.as_str())
