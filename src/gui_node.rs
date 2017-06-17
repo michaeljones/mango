@@ -107,6 +107,7 @@ impl Widget for GuiNode {
     /// update.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         use conrod::{color, Sizeable};
+        use conrod::position::{Position, Relative};
 
         let widget::UpdateArgs {
             id,
@@ -127,7 +128,7 @@ impl Widget for GuiNode {
                     conrod::event::Widget::Drag(drag) => {
                         if data.mode == Mode::Drag {
                             data.x = data.origin_x + drag.total_delta_xy[0];
-                            data.y = data.origin_y - drag.total_delta_xy[1];
+                            data.y = data.origin_y + drag.total_delta_xy[1];
                         }
                     }
                     conrod::event::Widget::Press(press) => {
@@ -168,6 +169,8 @@ impl Widget for GuiNode {
             .graphics_for(id)
             .parent(parent_id)
             .top_left_with_margins_on(parent_id, data.y as f64, data.x as f64)
+            .x_position(Position::Relative(Relative::Scalar(data.x), Some(parent_id)))
+            .y_position(Position::Relative(Relative::Scalar(data.y), Some(parent_id)))
             .w(140.0)
             .h(30.0)
             .flow_right(&[(state.ids.input_button,

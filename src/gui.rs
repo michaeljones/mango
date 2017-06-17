@@ -164,6 +164,16 @@ pub mod feature {
                                 params.tab_y = params.mouse_y;
                             }
                         }
+                        conrod::event::Input::Release(conrod::input::Button::Keyboard(conrod::input::Key::Backspace)) |
+                        conrod::event::Input::Release(conrod::input::Button::Keyboard(conrod::input::Key::Delete)) => {
+                        }
+                        conrod::event::Input::Motion(conrod::input::Motion::MouseCursor {
+                                                         x,
+                                                         y,
+                                                     }) => {
+                            params.mouse_x = x as f64;
+                            params.mouse_y = y as f64;
+                        }
                         _ => {}
                     }
                 }
@@ -187,10 +197,6 @@ pub mod feature {
                         }
                         break 'main
                     }
-                    glium::glutin::Event::MouseMoved(x, y) => {
-                        params.mouse_x = x as f64;
-                        params.mouse_y = y as f64;
-                    }
                     _ => {}
                 }
             }
@@ -213,6 +219,7 @@ pub mod feature {
 
     fn set_ui(ref mut ui: conrod::UiCell, ids: &mut Ids, params: &mut Params) {
         use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};
+        use conrod::position::{Position, Relative};
         widget::Canvas::new()
             .color(color::DARK_CHARCOAL)
             .set(ids.canvas, ui);
@@ -224,7 +231,8 @@ pub mod feature {
                 .pad(5.0)
                 .w(200.0)
                 .h(30.0)
-                .top_left_with_margins_on(ids.canvas, params.tab_y as f64, params.tab_x as f64)
+                .x_position(Position::Relative(Relative::Scalar(params.tab_x), Some(ids.canvas)))
+                .y_position(Position::Relative(Relative::Scalar(params.tab_y), Some(ids.canvas)))
                 .set(ids.name_input_background, ui);
 
             for event in widget::TextBox::new(params.name_input.as_str())
@@ -374,8 +382,8 @@ pub mod feature {
                 (Some(a), Some(b)) => {
                     let an = a.borrow();
                     let bn = b.borrow();
-                    let start = [an.x - 400.0 + 140.0 - 10.0, (600.0 - an.y) - 300.0 - 15.0];
-                    let end = [bn.x - 400.0 + 10.0, (600.0 - bn.y) - 300.0 - 15.0];
+                    let start = [an.x + 70.0 - 10.0, an.y];
+                    let end = [bn.x - 70.0 + 10.0, bn.y];
                     widget::primitive::line::Line::new(start, end)
                         .top_left_of(ids.canvas)
                         .thickness(2.0)
