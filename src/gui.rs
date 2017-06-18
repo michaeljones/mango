@@ -39,6 +39,51 @@ pub mod feature {
         }
     }
 
+    trait Command {
+        fn execute(&mut self) {}
+    }
+
+    struct CreateNodeCommand {}
+
+    impl CreateNodeCommand {
+        pub fn new() -> Self {
+            CreateNodeCommand {}
+        }
+    }
+
+    struct CreateConnectionCommand {}
+
+    impl CreateConnectionCommand {
+        pub fn new() -> Self {
+            CreateConnectionCommand {}
+        }
+    }
+
+    struct CommandGroup {
+        commands: Vec<Rc<RefCell<Command>>>,
+    }
+
+    impl CommandGroup {
+        pub fn new(commands: Vec<Rc<RefCell<Command>>>) -> Self {
+            CommandGroup { commands: commands }
+        }
+    }
+
+    struct UndoStack {
+        undo: Vec<Rc<RefCell<Command>>>,
+    }
+
+    impl UndoStack {
+        pub fn new() -> Self {
+            UndoStack { undo: vec![] }
+        }
+        pub fn push(&mut self, command: &Rc<RefCell<Command>>) {
+            self.undo.push(command.clone());
+        }
+
+        pub fn undo() {}
+    }
+
     struct Params {
         pub node_id: i64,
         pub display_menu: bool,
@@ -47,25 +92,20 @@ pub mod feature {
         pub tab_x: f64,
         pub tab_y: f64,
         pub name_input: String,
-        pub gui_nodes: Vec<Rc<RefCell<gui_node::GuiNodeData>>>,
+        pub gui_nodes: HashMap<conrod::widget::id::Id, Rc<RefCell<gui_node::GuiNodeData>>>,
+        pub last_node: Option<Rc<RefCell<gui_node::GuiNodeData>>>,
         pub connect_node: Option<Rc<RefCell<gui_node::GuiNodeData>>>,
         pub node_map: HashMap<i64, Rc<RefCell<Node>>>,
         pub current_connection: Option<conrod::position::Point>,
         pub connections: Vec<Connection>,
         pub selected_node: Option<conrod::widget::id::Id>,
+        pub undo_stack: UndoStack,
     }
 
     fn find_gui_node(id: conrod::widget::id::Id,
-                     nodes: &Vec<Rc<RefCell<gui_node::GuiNodeData>>>)
-                     -> Option<Rc<RefCell<gui_node::GuiNodeData>>> {
-        // use std::borrow::Borrow;
-        for node in nodes {
-            let n = node.borrow();
-            if n.id == id {
-                return Some(node.clone());
-            }
-        }
-        None
+                     nodes: &HashMap<conrod::widget::id::Id, Rc<RefCell<gui_node::GuiNodeData>>>)
+                     -> Option<&Rc<RefCell<gui_node::GuiNodeData>>> {
+        nodes.get(&id)
     }
 
     pub fn gui() {
@@ -111,12 +151,14 @@ pub mod feature {
             tab_x: 0.0,
             tab_y: 0.0,
             name_input: String::new(),
-            gui_nodes: vec![],
+            gui_nodes: HashMap::new(),
+            last_node: None,
             connect_node: None,
             node_map: HashMap::new(),
             current_connection: None,
             connections: vec![],
             selected_node: None,
+            undo_stack: UndoStack::new(),
         };
 
         'main: loop {
@@ -146,31 +188,31 @@ pub mod feature {
 
                 // Use the `winit` backend feature to convert the winit event to a conrod one.
                 if let Some(event) = conrod::backend::winit::convert(event.clone(), &display) {
+                    use conrod::event::Input;
+                    use conrod::input::{Button, Key, Motion};
+
                     ui.handle_event(event.clone());
                     ui_needs_update = true;
 
                     match event {
-                        conrod::event::Input::Release(conrod::input::Button::Keyboard(conrod::input::Key::Tab)) => {
-                            params.display_menu = true;
-                            if let Some(index) = params.selected_node {
-                                if let Some(node) = find_gui_node(index, &params.gui_nodes) {
-                                    let b = node.borrow();
-                                    params.tab_x = b.x + 200.0;
-                                    params.tab_y = b.y;
+                        Input::Release(Button::Keyboard(Key::A)) => {
+                            if !params.display_menu {
+                                params.display_menu = true;
+                                if let Some(index) = params.selected_node {
+                                    if let Some(node) = find_gui_node(index, &params.gui_nodes) {
+                                        let b = node.borrow();
+                                        params.tab_x = b.x + 200.0;
+                                        params.tab_y = b.y;
+                                    }
+                                } else {
+                                    params.tab_x = params.mouse_x;
+                                    params.tab_y = params.mouse_y;
                                 }
                             }
-                            else {
-                                params.tab_x = params.mouse_x;
-                                params.tab_y = params.mouse_y;
-                            }
                         }
-                        conrod::event::Input::Release(conrod::input::Button::Keyboard(conrod::input::Key::Backspace)) |
-                        conrod::event::Input::Release(conrod::input::Button::Keyboard(conrod::input::Key::Delete)) => {
-                        }
-                        conrod::event::Input::Motion(conrod::input::Motion::MouseCursor {
-                                                         x,
-                                                         y,
-                                                     }) => {
+                        Input::Release(Button::Keyboard(Key::Backspace)) |
+                        Input::Release(Button::Keyboard(Key::Delete)) => {}
+                        Input::Motion(Motion::MouseCursor { x, y }) => {
                             params.mouse_x = x as f64;
                             params.mouse_y = y as f64;
                         }
@@ -183,7 +225,7 @@ pub mod feature {
                     glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape)) |
                     glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Q)) |
                     glium::glutin::Event::Closed => {
-                        if let Some(g_node) = params.gui_nodes.last() {
+                        if let Some(g_node) = params.last_node {
                             if let Some(node) = params.node_map.get(&g_node.borrow().node_id) {
                                 build::pull(node.borrow_mut().deref_mut());
                             }
@@ -244,7 +286,9 @@ pub mod feature {
                 match event {
                     widget::text_box::Event::Update(string) => params.name_input = string,
                     widget::text_box::Event::Enter => {
-                        create_node(params, ui.widget_id_generator());
+                        if let Some(command) = create_node(params, ui.widget_id_generator()) {
+                            params.undo_stack.push(&command);
+                        }
                         params.name_input = "".to_string();
                         params.display_menu = false;
                     }
@@ -263,7 +307,7 @@ pub mod feature {
                    };
         }
 
-        for g_node in params.gui_nodes.iter() {
+        for (index, g_node) in params.gui_nodes.iter() {
             let id;
             let node_id;
             {
@@ -286,7 +330,7 @@ pub mod feature {
                     }
                     gui_node::Event::ConnectInput => {
 
-                        let mut nnn: Option<Rc<RefCell<gui_node::GuiNodeData>>> = None;
+                        let mut nnn: Option<&Rc<RefCell<gui_node::GuiNodeData>>> = None;
 
                         {
                             let graph = ui.widget_graph();
@@ -364,9 +408,9 @@ pub mod feature {
         }
 
         fn find_node(id: i64,
-                     nodes: &Vec<Rc<RefCell<gui_node::GuiNodeData>>>)
+                     nodes: &HashMap<conrod::widget::id::Id, Rc<RefCell<gui_node::GuiNodeData>>>)
                      -> Option<Rc<RefCell<gui_node::GuiNodeData>>> {
-            for node in nodes {
+            for (i, node) in nodes.iter() {
                 let n = node.borrow();
                 if n.node_id == id {
                     return Some(node.clone());
@@ -418,14 +462,17 @@ pub mod feature {
             .set(ids.scrollbar, ui);
     }
 
-    fn create_node(params: &mut Params, mut generator: conrod::widget::id::Generator) {
-        let id = params.node_id + 1;
+    fn create_node(params: &mut Params,
+                   mut generator: conrod::widget::id::Generator)
+                   -> Option<Rc<RefCell<Command>>> {
+        let node_id = params.node_id + 1;
         params.node_id = params.node_id + 1;
-        let maybe_node = build::build(id, params.name_input.clone());
+        let maybe_node = build::build(node_id, params.name_input.clone());
         if let Some(node) = maybe_node {
+            let id = generator.next();
             let g_node = Rc::new(RefCell::new(gui_node::GuiNodeData {
-                                                  id: generator.next(),
-                                                  node_id: id,
+                                                  id: id,
+                                                  node_id: node_id,
                                                   label: params.name_input.clone(),
                                                   x: params.tab_x,
                                                   y: params.tab_y,
@@ -434,14 +481,14 @@ pub mod feature {
                                                   mode: gui_node::Mode::None,
                                               }));
 
-            params.node_map.insert(id, node.clone());
-            params.gui_nodes.push(g_node.clone());
+            params.node_map.insert(node_id, node.clone());
+            params.gui_nodes.insert(id, g_node.clone());
             let g_node_deref = g_node.borrow();
 
             if let Some(index) = params.selected_node {
                 if let Some(node) = find_gui_node(index, &params.gui_nodes) {
                     let b = node.borrow();
-                    build::connect(b.node_id, None, id, Some(1), &params.node_map);
+                    build::connect(b.node_id, None, node_id, Some(1), &params.node_map);
                     let connection_id;
                     {
                         connection_id = generator.next();
@@ -451,14 +498,17 @@ pub mod feature {
                         .push(Connection {
                                   id: connection_id,
                                   from: b.node_id,
-                                  to: id,
+                                  to: node_id,
                               });
 
                 }
             }
 
             params.selected_node = Some(g_node_deref.id);
+
+            Some(Rc::new(RefCell::new(CommandGroup::new(vec![]))));
         }
+        None
     }
 
 }
