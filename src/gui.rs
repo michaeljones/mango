@@ -52,6 +52,20 @@ pub mod feature {
         pub node_map: HashMap<i64, Rc<RefCell<Node>>>,
         pub current_connection: Option<conrod::position::Point>,
         pub connections: Vec<Connection>,
+        pub selected_node: Option<conrod::widget::id::Id>,
+    }
+
+    fn find_gui_node(id: conrod::widget::id::Id,
+                     nodes: &Vec<Rc<RefCell<gui_node::GuiNodeData>>>)
+                     -> Option<Rc<RefCell<gui_node::GuiNodeData>>> {
+        // use std::borrow::Borrow;
+        for node in nodes {
+            let n = node.borrow();
+            if n.id == id {
+                return Some(node.clone());
+            }
+        }
+        None
     }
 
     pub fn gui() {
@@ -62,7 +76,7 @@ pub mod feature {
         let display = glium::glutin::WindowBuilder::new()
             .with_vsync()
             .with_dimensions(WIDTH, HEIGHT)
-            .with_title("Hello Conrod!")
+            .with_title("slipstream")
             .with_multisampling(4)
             .build_glium()
             .unwrap();
@@ -102,6 +116,7 @@ pub mod feature {
             node_map: HashMap::new(),
             current_connection: None,
             connections: vec![],
+            selected_node: None,
         };
 
         'main: loop {
@@ -131,8 +146,36 @@ pub mod feature {
 
                 // Use the `winit` backend feature to convert the winit event to a conrod one.
                 if let Some(event) = conrod::backend::winit::convert(event.clone(), &display) {
-                    ui.handle_event(event);
+                    ui.handle_event(event.clone());
                     ui_needs_update = true;
+
+                    match event {
+                        conrod::event::Input::Release(conrod::input::Button::Keyboard(conrod::input::Key::Tab)) => {
+                            params.display_menu = true;
+                            if let Some(index) = params.selected_node {
+                                if let Some(node) = find_gui_node(index, &params.gui_nodes) {
+                                    let b = node.borrow();
+                                    params.tab_x = b.x + 200.0;
+                                    params.tab_y = b.y;
+                                }
+                            }
+                            else {
+                                params.tab_x = params.mouse_x;
+                                params.tab_y = params.mouse_y;
+                            }
+                        }
+                        conrod::event::Input::Release(conrod::input::Button::Keyboard(conrod::input::Key::Backspace)) |
+                        conrod::event::Input::Release(conrod::input::Button::Keyboard(conrod::input::Key::Delete)) => {
+                        }
+                        conrod::event::Input::Motion(conrod::input::Motion::MouseCursor {
+                                                         x,
+                                                         y,
+                                                     }) => {
+                            params.mouse_x = x as f64;
+                            params.mouse_y = y as f64;
+                        }
+                        _ => {}
+                    }
                 }
 
                 match event {
@@ -153,15 +196,6 @@ pub mod feature {
                             println!("failed to find last node");
                         }
                         break 'main
-                    }
-                    glium::glutin::Event::KeyboardInput( glutin::ElementState::Released, _, Some(glium::glutin::VirtualKeyCode::Tab)) => {
-                        params.display_menu = true;
-                        params.tab_x = params.mouse_x;
-                        params.tab_y = params.mouse_y;
-                    }
-                    glium::glutin::Event::MouseMoved(x, y) => {
-                        params.mouse_x = x as f64;
-                        params.mouse_y = y as f64;
                     }
                     _ => {}
                 }
@@ -185,10 +219,10 @@ pub mod feature {
 
     fn set_ui(ref mut ui: conrod::UiCell, ids: &mut Ids, params: &mut Params) {
         use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};
+        use conrod::position::{Position, Relative};
         widget::Canvas::new()
             .color(color::DARK_CHARCOAL)
             .set(ids.canvas, ui);
-
 
         if params.display_menu {
             widget::Canvas::new()
@@ -196,7 +230,8 @@ pub mod feature {
                 .pad(5.0)
                 .w(200.0)
                 .h(30.0)
-                .top_left_with_margins_on(ids.canvas, params.tab_y as f64, params.tab_x as f64)
+                .x_position(Position::Relative(Relative::Scalar(params.tab_x), Some(ids.canvas)))
+                .y_position(Position::Relative(Relative::Scalar(params.tab_y), Some(ids.canvas)))
                 .set(ids.name_input_background, ui);
 
             for event in widget::TextBox::new(params.name_input.as_str())
@@ -215,19 +250,6 @@ pub mod feature {
                     }
                 }
             }
-        }
-
-        fn find_gui_node(id: conrod::widget::id::Id,
-                         nodes: &Vec<Rc<RefCell<gui_node::GuiNodeData>>>)
-                         -> Option<Rc<RefCell<gui_node::GuiNodeData>>> {
-            // use std::borrow::Borrow;
-            for node in nodes {
-                let n = node.borrow();
-                if n.id == id {
-                    return Some(node.clone());
-                }
-            }
-            None
         }
 
         fn in_box(mouse_xy: &conrod::position::Point, node_x: f64, node_y: f64) -> bool {
@@ -249,7 +271,8 @@ pub mod feature {
                 id = node.id;
                 node_id = node.node_id;
             }
-            for event in gui_node::GuiNode::new(g_node.clone())
+            let selected = Some(id) == params.selected_node;
+            for event in gui_node::GuiNode::new(g_node.clone(), selected)
                     .parent(ids.canvas)
                     .w(140.0)
                     .h(30.0)
@@ -277,7 +300,7 @@ pub mod feature {
                                     match (find_gui_node(node_index, &params.gui_nodes),
                                            graph.node(node_index)) {
                                         (Some(ref gui_node),
-                                         Some(&conrod::graph::Node::Widget(ref container))) => {
+                                         Some(&conrod::graph::Node::Widget(ref _container))) => {
                                             let m = gui_node.borrow();
                                             if in_box(&state.mouse.xy, m.x, m.y) {
                                                 nnn = Some(gui_node.clone());
@@ -352,16 +375,36 @@ pub mod feature {
             None
         }
 
+        fn calculate_point_path(start: conrod::position::Point,
+                                end: conrod::position::Point)
+                                -> Vec<conrod::position::Point> {
+            if end[0] >= start[0] + 40.0 {
+                let x_halfway = (start[0] + end[0]) / 2.0;
+                vec![start, [x_halfway, start[1]], [x_halfway, end[1]], end]
+            } else {
+                let y_halfway = (start[1] + end[1]) / 2.0;
+                vec![start,
+                     [start[0] + 20.0, start[1]],
+                     [start[0] + 20.0, y_halfway],
+                     [end[0] - 20.0, y_halfway],
+                     [end[0] - 20.0, end[1]],
+                     end]
+            }
+        }
+
+
         for connection in &params.connections {
             match (find_node(connection.from, &params.gui_nodes),
                    find_node(connection.to, &params.gui_nodes)) {
                 (Some(a), Some(b)) => {
                     let an = a.borrow();
                     let bn = b.borrow();
-                    let start = [an.x - 400.0 + 140.0, (600.0 - an.y) - 300.0 - 15.0];
-                    let end = [bn.x - 400.0, (600.0 - bn.y) - 300.0 - 15.0];
-                    widget::primitive::line::Line::new(start, end)
+                    let start = [an.x + 70.0 - 10.0, an.y];
+                    let end = [bn.x - 70.0 + 10.0, bn.y];
+                    let points = calculate_point_path(start, end);
+                    widget::primitive::point_path::PointPath::new(points)
                         .top_left_of(ids.canvas)
+                        .thickness(2.0)
                         .set(connection.id, ui);
                 }
                 _ => {
@@ -392,7 +435,29 @@ pub mod feature {
                                               }));
 
             params.node_map.insert(id, node.clone());
-            params.gui_nodes.push(g_node);
+            params.gui_nodes.push(g_node.clone());
+            let g_node_deref = g_node.borrow();
+
+            if let Some(index) = params.selected_node {
+                if let Some(node) = find_gui_node(index, &params.gui_nodes) {
+                    let b = node.borrow();
+                    build::connect(b.node_id, None, id, Some(1), &params.node_map);
+                    let connection_id;
+                    {
+                        connection_id = generator.next();
+                    }
+                    params
+                        .connections
+                        .push(Connection {
+                                  id: connection_id,
+                                  from: b.node_id,
+                                  to: id,
+                              });
+
+                }
+            }
+
+            params.selected_node = Some(g_node_deref.id);
         }
     }
 

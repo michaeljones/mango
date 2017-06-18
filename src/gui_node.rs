@@ -27,6 +27,7 @@ pub struct GuiNode {
     common: widget::CommonBuilder,
     data: Rc<RefCell<GuiNodeData>>,
     style: Style,
+    selected: bool,
 }
 
 // We use the `widget_style!` macro to vastly simplify the definition and implementation of the
@@ -57,11 +58,12 @@ pub struct State {
 }
 
 impl GuiNode {
-    pub fn new(data: Rc<RefCell<GuiNodeData>>) -> Self {
+    pub fn new(data: Rc<RefCell<GuiNodeData>>, selected: bool) -> Self {
         GuiNode {
             common: widget::CommonBuilder::new(),
             data: data,
             style: Style::new(),
+            selected: selected,
         }
     }
 }
@@ -105,6 +107,7 @@ impl Widget for GuiNode {
     /// update.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
         use conrod::{color, Sizeable};
+        use conrod::position::{Position, Relative};
 
         let widget::UpdateArgs {
             id,
@@ -125,7 +128,7 @@ impl Widget for GuiNode {
                     conrod::event::Widget::Drag(drag) => {
                         if data.mode == Mode::Drag {
                             data.x = data.origin_x + drag.total_delta_xy[0];
-                            data.y = data.origin_y - drag.total_delta_xy[1];
+                            data.y = data.origin_y + drag.total_delta_xy[1];
                         }
                     }
                     conrod::event::Widget::Press(press) => {
@@ -166,41 +169,40 @@ impl Widget for GuiNode {
             .graphics_for(id)
             .parent(parent_id)
             .top_left_with_margins_on(parent_id, data.y as f64, data.x as f64)
+            .x_position(Position::Relative(Relative::Scalar(data.x), Some(parent_id)))
+            .y_position(Position::Relative(Relative::Scalar(data.y), Some(parent_id)))
             .w(140.0)
             .h(30.0)
             .flow_right(&[(state.ids.input_button,
                            widget::Canvas::new()
                                .graphics_for(id)
                                .parent(state.ids.node)
-                               .w(20.0)
-                               .h(30.0)
-                               .color(color::RED)),
+                               .length(20.0)
+                               .rgb(159.0 / 256.0, 168.0 / 256.0, 171.0 / 256.0)),
 
                           (state.ids.body,
                            widget::Canvas::new()
                                .graphics_for(id)
                                .parent(state.ids.node)
-                               .w(100.0)
-                               .h(30.0)
-                               .color(color::BLACK)),
+                               .length(100.0)
+                               .rgb(91.0 / 256.0, 103.0 / 256.0, 107.0 / 256.0)
+                               .and_if(self.selected, |w| w.rgb(0.5, 0.5, 0.5))),
 
                           (state.ids.output_button,
                            widget::Canvas::new()
                                .graphics_for(id)
                                .parent(state.ids.node)
-                               .w(20.0)
-                               .h(30.0)
-                               .color(color::BLUE))])
-            .color(color::BLACK)
+                               .length(20.0)
+                               .rgb(113.0 / 256.0, 158.0 / 256.0, 171.0 / 256.0))])
             .set(state.ids.node, ui);
 
         widget::primitive::text::Text::new(data.label.as_str())
             .graphics_for(id)
             .parent(state.ids.body)
-            .w(140.0)
-            .h(30.0)
+            .w(100.0)
             .color(color::WHITE)
             .middle_of(state.ids.body)
+            .no_line_wrap()
             .set(state.ids.text, ui);
 
         Some(output_event)
