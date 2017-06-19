@@ -42,13 +42,13 @@ impl Node for JsonObject {
         }
     }
 
-    fn set_input(&mut self, node: Rc<RefCell<Node>>, index: Option<i64>) -> () {
+    fn set_input(&mut self, node: Option<Rc<RefCell<Node>>>, index: Option<i64>) -> () {
         match index {
             Some(1) => {
-                self.keys_input = Some(node);
+                self.keys_input = node;
             }
             Some(2) => {
-                self.values_input = Some(node);
+                self.values_input = node;
             }
             Some(_) => println!("Invalid input index for json-object"),
             None => println!("Missing input index for json-object"),

@@ -10,6 +10,7 @@ pub mod feature {
     use gui_node;
     use build;
     use Node;
+    use NodeRef;
 
     use std::rc::Rc;
     use std::cell::RefCell;
@@ -40,22 +41,86 @@ pub mod feature {
     }
 
     trait Command {
-        fn execute(&mut self) {}
+        fn execute(&mut self, &mut Params);
+        fn undo(&mut self, params: &mut Params);
     }
 
-    struct CreateNodeCommand {}
+    struct CreateNodeCommand {
+        node: NodeRef,
+        g_node: gui_node::GuiNodeDataRef,
+        previous_last_node: Option<Rc<RefCell<gui_node::GuiNodeData>>>,
+    }
 
     impl CreateNodeCommand {
-        pub fn new() -> Self {
-            CreateNodeCommand {}
+        pub fn new(node: NodeRef, g_node: gui_node::GuiNodeDataRef) -> Self {
+            CreateNodeCommand {
+                node: node,
+                g_node: g_node,
+                previous_last_node: None,
+            }
+        }
+
+        pub fn new_ref(node: NodeRef, g_node: gui_node::GuiNodeDataRef) -> Rc<RefCell<Self>> {
+            Rc::new(RefCell::new(CreateNodeCommand::new(node, g_node)))
         }
     }
 
-    struct CreateConnectionCommand {}
+    impl Command for CreateNodeCommand {
+        fn execute(&mut self, params: &mut Params) {
+            let node = self.node.borrow();
+            let g_node = self.g_node.borrow();
+            params.node_map.insert(node.id(), self.node.clone());
+            params.gui_nodes.insert(g_node.id, self.g_node.clone());
+
+            self.previous_last_node = params.last_node.clone();
+            params.last_node = Some(self.g_node.clone());
+        }
+
+        fn undo(&mut self, params: &mut Params) {
+            let node = self.node.borrow();
+            let g_node = self.g_node.borrow();
+            params.node_map.remove(&node.id());
+            params.gui_nodes.remove(&g_node.id);
+
+            params.last_node = self.previous_last_node.clone();
+        }
+    }
+
+    struct CreateConnectionCommand {
+        id: conrod::widget::id::Id,
+        from: i64,
+        to: i64,
+    }
 
     impl CreateConnectionCommand {
-        pub fn new() -> Self {
-            CreateConnectionCommand {}
+        pub fn new(id: conrod::widget::id::Id, from: i64, to: i64) -> Self {
+            CreateConnectionCommand {
+                id: id,
+                from: from,
+                to: to,
+            }
+        }
+
+        pub fn new_ref(id: conrod::widget::id::Id, from: i64, to: i64) -> Rc<RefCell<Self>> {
+            Rc::new(RefCell::new(CreateConnectionCommand::new(id, from, to)))
+        }
+    }
+
+    impl Command for CreateConnectionCommand {
+        fn execute(&mut self, mut params: &mut Params) {
+            build::connect(self.from, None, self.to, Some(1), &params.node_map);
+            params
+                .connections
+                .push(Connection {
+                          id: self.id,
+                          from: self.from,
+                          to: self.to,
+                      });
+        }
+
+        fn undo(&mut self, params: &mut Params) {
+            build::disconnect(self.to, Some(1), &params.node_map);
+            params.connections.pop();
         }
     }
 
@@ -67,21 +132,61 @@ pub mod feature {
         pub fn new(commands: Vec<Rc<RefCell<Command>>>) -> Self {
             CommandGroup { commands: commands }
         }
+
+        pub fn new_ref(commands: Vec<Rc<RefCell<Command>>>) -> Rc<RefCell<Self>> {
+            Rc::new(RefCell::new(CommandGroup::new(commands)))
+        }
+    }
+
+    impl Command for CommandGroup {
+        fn execute(&mut self, mut params: &mut Params) {
+            for command in &self.commands {
+                let mut com = command.borrow_mut();
+                com.execute(&mut params);
+            }
+        }
+
+        fn undo(&mut self, mut params: &mut Params) {
+            for command in self.commands.iter().rev() {
+                let mut com = command.borrow_mut();
+                com.undo(&mut params);
+            }
+        }
     }
 
     struct UndoStack {
         undo: Vec<Rc<RefCell<Command>>>,
+        redo: Vec<Rc<RefCell<Command>>>,
     }
 
     impl UndoStack {
         pub fn new() -> Self {
-            UndoStack { undo: vec![] }
-        }
-        pub fn push(&mut self, command: &Rc<RefCell<Command>>) {
-            self.undo.push(command.clone());
+            UndoStack {
+                undo: vec![],
+                redo: vec![],
+            }
         }
 
-        pub fn undo() {}
+        pub fn push(&mut self, command: Rc<RefCell<Command>>) {
+            self.undo.push(command.clone());
+            self.redo.clear();
+        }
+
+        pub fn undo(&mut self, mut params: &mut Params) {
+            if let Some(command) = self.undo.pop() {
+                let mut com = command.borrow_mut();
+                com.undo(&mut params);
+                self.redo.push(command.clone());
+            }
+        }
+
+        pub fn redo(&mut self, mut params: &mut Params) {
+            if let Some(command) = self.redo.pop() {
+                let mut com = command.borrow_mut();
+                com.execute(&mut params);
+                self.undo.push(command.clone());
+            }
+        }
     }
 
     struct Params {
@@ -99,7 +204,6 @@ pub mod feature {
         pub current_connection: Option<conrod::position::Point>,
         pub connections: Vec<Connection>,
         pub selected_node: Option<conrod::widget::id::Id>,
-        pub undo_stack: UndoStack,
     }
 
     fn find_gui_node(id: conrod::widget::id::Id,
@@ -158,8 +262,9 @@ pub mod feature {
             current_connection: None,
             connections: vec![],
             selected_node: None,
-            undo_stack: UndoStack::new(),
         };
+
+        let mut undo_stack = UndoStack::new();
 
         'main: loop {
 
@@ -210,11 +315,29 @@ pub mod feature {
                                 }
                             }
                         }
+                        Input::Release(Button::Keyboard(Key::U)) => {
+                            if !params.display_menu {
+                                undo_stack.undo(&mut params);
+                            }
+                        }
+                        Input::Release(Button::Keyboard(Key::R)) => {
+                            if !params.display_menu {
+                                let global = ui.global_input();
+                                let ref state = global.current;
+                                if state.modifiers.contains(conrod::input::keyboard::CTRL) {
+                                    undo_stack.redo(&mut params);
+                                }
+                            }
+                        }
                         Input::Release(Button::Keyboard(Key::Backspace)) |
                         Input::Release(Button::Keyboard(Key::Delete)) => {}
                         Input::Motion(Motion::MouseCursor { x, y }) => {
                             params.mouse_x = x as f64;
                             params.mouse_y = y as f64;
+                        }
+                        Input::Release(Button::Keyboard(Key::Escape)) => {
+                            params.display_menu = false;
+                            params.name_input = String::from("");
                         }
                         _ => {}
                     }
@@ -222,22 +345,21 @@ pub mod feature {
 
                 match event {
                     // Break from the loop upon `Escape`.
-                    glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape)) |
-                    glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Q)) |
+                    glium::glutin::Event::KeyboardInput(_,
+                                                        _,
+                                                        Some(glium::glutin::VirtualKeyCode::Q)) |
                     glium::glutin::Event::Closed => {
                         if let Some(g_node) = params.last_node {
                             if let Some(node) = params.node_map.get(&g_node.borrow().node_id) {
                                 build::pull(node.borrow_mut().deref_mut());
-                            }
-                            else {
+                            } else {
                                 println!("failed to find node in node_map");
                             }
 
-                        }
-                        else {
+                        } else {
                             println!("failed to find last node");
                         }
-                        break 'main
+                        break 'main;
                     }
                     _ => {}
                 }
@@ -245,7 +367,7 @@ pub mod feature {
 
             // Instantiate all widgets in the GUI.
             {
-                set_ui(ui.set_widgets(), &mut ids, &mut params);
+                set_ui(ui.set_widgets(), &mut ids, &mut params, &mut undo_stack);
             }
 
             // Render the `Ui` and then display it on the screen.
@@ -259,7 +381,10 @@ pub mod feature {
         }
     }
 
-    fn set_ui(ref mut ui: conrod::UiCell, ids: &mut Ids, params: &mut Params) {
+    fn set_ui(ref mut ui: conrod::UiCell,
+              ids: &mut Ids,
+              params: &mut Params,
+              undo_stack: &mut UndoStack) {
         use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};
         use conrod::position::{Position, Relative};
         widget::Canvas::new()
@@ -286,9 +411,7 @@ pub mod feature {
                 match event {
                     widget::text_box::Event::Update(string) => params.name_input = string,
                     widget::text_box::Event::Enter => {
-                        if let Some(command) = create_node(params, ui.widget_id_generator()) {
-                            params.undo_stack.push(&command);
-                        }
+                        create_node(params, undo_stack, ui.widget_id_generator());
                         params.name_input = "".to_string();
                         params.display_menu = false;
                     }
@@ -307,7 +430,7 @@ pub mod feature {
                    };
         }
 
-        for (index, g_node) in params.gui_nodes.iter() {
+        for (_, g_node) in params.gui_nodes.iter() {
             let id;
             let node_id;
             {
@@ -410,7 +533,7 @@ pub mod feature {
         fn find_node(id: i64,
                      nodes: &HashMap<conrod::widget::id::Id, Rc<RefCell<gui_node::GuiNodeData>>>)
                      -> Option<Rc<RefCell<gui_node::GuiNodeData>>> {
-            for (i, node) in nodes.iter() {
+            for (_, node) in nodes.iter() {
                 let n = node.borrow();
                 if n.node_id == id {
                     return Some(node.clone());
@@ -462,9 +585,10 @@ pub mod feature {
             .set(ids.scrollbar, ui);
     }
 
-    fn create_node(params: &mut Params,
+    fn create_node(mut params: &mut Params,
+                   mut undo_stack: &mut UndoStack,
                    mut generator: conrod::widget::id::Generator)
-                   -> Option<Rc<RefCell<Command>>> {
+                   -> () {
         let node_id = params.node_id + 1;
         params.node_id = params.node_id + 1;
         let maybe_node = build::build(node_id, params.name_input.clone());
@@ -481,34 +605,39 @@ pub mod feature {
                                                   mode: gui_node::Mode::None,
                                               }));
 
-            params.node_map.insert(node_id, node.clone());
-            params.gui_nodes.insert(id, g_node.clone());
             let g_node_deref = g_node.borrow();
+
+
+            let mut commands: Vec<Rc<RefCell<Command>>> = vec![];
+            let command = CreateNodeCommand::new_ref(node.clone(), g_node.clone());
+
+            commands.push(command);
 
             if let Some(index) = params.selected_node {
                 if let Some(node) = find_gui_node(index, &params.gui_nodes) {
                     let b = node.borrow();
-                    build::connect(b.node_id, None, node_id, Some(1), &params.node_map);
                     let connection_id;
                     {
                         connection_id = generator.next();
                     }
-                    params
-                        .connections
-                        .push(Connection {
-                                  id: connection_id,
-                                  from: b.node_id,
-                                  to: node_id,
-                              });
+
+                    let command =
+                        CreateConnectionCommand::new_ref(connection_id, b.node_id, node_id);
+
+                    commands.push(command);
+
 
                 }
             }
 
-            params.selected_node = Some(g_node_deref.id);
+            let command_group = CommandGroup::new_ref(commands);
 
-            Some(Rc::new(RefCell::new(CommandGroup::new(vec![]))));
+            let mut com = command_group.borrow_mut();
+            com.execute(&mut params);
+            undo_stack.push(command_group.clone());
+
+            params.selected_node = Some(g_node_deref.id);
         }
-        None
     }
 
 }

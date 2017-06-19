@@ -35,7 +35,7 @@ impl Node for JsonKeys {
         }
     }
 
-    fn set_input(&mut self, node: Rc<RefCell<Node>>, _index: Option<i64>) -> () {
-        self.input = Some(node);
+    fn set_input(&mut self, node: Option<Rc<RefCell<Node>>>, _index: Option<i64>) -> () {
+        self.input = node;
     }
 }
