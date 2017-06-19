@@ -94,9 +94,22 @@ pub fn connect(from: i64,
 
     match (node_map.get(&from), node_map.get(&to)) {
         (Some(from_node), Some(to_node)) => {
-            to_node.borrow_mut().set_input(from_node.clone(), to_input)
+            to_node
+                .borrow_mut()
+                .set_input(Some(from_node.clone()), to_input)
         }
         _ => println!("Unable to find nodes matching ids: {:?} & {:?}", from, to),
+    }
+}
+
+pub fn disconnect(to: i64,
+                  to_input: Option<i64>,
+                  node_map: &HashMap<i64, Rc<RefCell<Node>>>)
+                  -> () {
+
+    match node_map.get(&to) {
+        Some(to_node) => to_node.borrow_mut().set_input(None, to_input),
+        _ => println!("Unable to find nodes matching id: {:?}", to),
     }
 }
 

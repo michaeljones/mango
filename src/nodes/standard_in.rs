@@ -34,5 +34,5 @@ impl Node for StandardIn {
         }
     }
 
-    fn set_input(&mut self, _node: Rc<RefCell<Node>>, _index: Option<i64>) -> () {}
+    fn set_input(&mut self, _node: Option<Rc<RefCell<Node>>>, _index: Option<i64>) -> () {}
 }

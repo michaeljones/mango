@@ -27,8 +27,10 @@ pub enum FlowData {
 pub trait Node {
     fn id(&self) -> i64;
     fn pull(&mut self) -> FlowData;
-    fn set_input(&mut self, node: Rc<RefCell<Node>>, index: Option<i64>) -> ();
+    fn set_input(&mut self, node: Option<Rc<RefCell<Node>>>, index: Option<i64>) -> ();
 }
+
+type NodeRef = Rc<RefCell<Node>>;
 
 fn main() {
     gui::feature::gui();

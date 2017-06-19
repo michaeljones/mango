@@ -23,12 +23,15 @@ pub struct GuiNodeData {
     pub mode: Mode,
 }
 
+pub type GuiNodeDataRef = Rc<RefCell<GuiNodeData>>;
+
 pub struct GuiNode {
     common: widget::CommonBuilder,
-    data: Rc<RefCell<GuiNodeData>>,
+    data: GuiNodeDataRef,
     style: Style,
     selected: bool,
 }
+
 
 // We use the `widget_style!` macro to vastly simplify the definition and implementation of the
 // widget's associated `Style` type. This generates both a `Style` struct, as well as an
