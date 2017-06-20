@@ -12,6 +12,8 @@ mod nodes;
 mod gui;
 mod gui_node;
 mod build;
+mod commands;
+mod params;
 
 #[derive(Debug, Clone)]
 pub enum FlowData {
