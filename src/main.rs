@@ -26,10 +26,23 @@ pub enum FlowData {
     Json(json::JsonValue),
 }
 
+pub struct StringFieldData {
+    pub label: String,
+    pub field: String,
+}
+
+pub enum NodeUI {
+    None,
+    StringField(StringFieldData),
+}
+
 pub trait Node {
     fn id(&self) -> i64;
     fn pull(&mut self) -> FlowData;
     fn set_input(&mut self, node: Option<Rc<RefCell<Node>>>, index: Option<i64>) -> ();
+    fn get_ui(&self) -> NodeUI {
+        NodeUI::None
+    }
 }
 
 type NodeRef = Rc<RefCell<Node>>;

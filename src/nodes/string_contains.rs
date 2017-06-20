@@ -3,6 +3,8 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 use Node;
+use NodeUI;
+use StringFieldData;
 use FlowData;
 
 pub struct StringContains {
@@ -40,5 +42,12 @@ impl Node for StringContains {
 
     fn set_input(&mut self, node: Option<Rc<RefCell<Node>>>, _index: Option<i64>) -> () {
         self.input = node;
+    }
+
+    fn get_ui(&self) -> NodeUI {
+        NodeUI::StringField(StringFieldData {
+                                label: String::from("Value"),
+                                field: String::from("value"),
+                            })
     }
 }

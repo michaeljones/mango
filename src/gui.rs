@@ -11,11 +11,14 @@ pub mod feature {
     use build;
     use commands::{CreateNodeCommand, CreateConnectionCommand, Command, CommandGroup, UndoStack};
     use params::Params;
+    use NodeUI;
+    use Node;
 
     use std::rc::Rc;
     use std::cell::RefCell;
     use std::collections::HashMap;
     use std::ops::DerefMut;
+    use std::ops::Deref;
 
     use conrod;
     use conrod::backend::glium::glium;
@@ -224,9 +227,37 @@ pub mod feature {
               undo_stack: &mut UndoStack) {
         use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};
         use conrod::position::{Position, Relative};
+
         widget::Canvas::new()
             .color(color::DARK_CHARCOAL)
+            .flow_right(&[(ids.node_panel, widget::Canvas::new().length(500.0).color(color::RED)),
+                          (ids.parameters_panel,
+                           widget::Canvas::new().length(300.0).color(color::BLUE))])
             .set(ids.canvas, ui);
+
+        if let Some(id) = params.selected_node {
+            if let Some(g_node) = params.gui_nodes.get(&id) {
+                let n = g_node.borrow();
+                if let Some(node) = params.node_map.get(&n.node_id) {
+                    let nn = node.borrow();
+                    let param_ui = nn.get_ui();
+                    match param_ui {
+                        NodeUI::None => {
+                            widget::Text::new("Nothing")
+                                .parent(ids.parameters_panel)
+                                .middle_of(ids.parameters_panel)
+                                .set(ids.parameters_title, ui);
+                        }
+                        NodeUI::StringField(_data) => {
+                            widget::Text::new("StringField")
+                                .parent(ids.parameters_panel)
+                                .middle_of(ids.parameters_panel)
+                                .set(ids.parameters_title, ui);
+                        }
+                    }
+                }
+            }
+        }
 
         if params.display_menu {
             widget::Canvas::new()
@@ -398,7 +429,6 @@ pub mod feature {
                      end]
             }
         }
-
 
         for connection in &params.connections {
             match (find_node(connection.from, &params.gui_nodes),
