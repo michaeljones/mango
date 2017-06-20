@@ -12,13 +12,12 @@ pub mod feature {
     use commands::{CreateNodeCommand, CreateConnectionCommand, Command, CommandGroup, UndoStack};
     use params::Params;
     use NodeUI;
-    use Node;
+    use widgets;
 
     use std::rc::Rc;
     use std::cell::RefCell;
     use std::collections::HashMap;
     use std::ops::DerefMut;
-    use std::ops::Deref;
 
     use conrod;
     use conrod::backend::glium::glium;
@@ -41,6 +40,7 @@ pub mod feature {
             nodes[],
             line,
             node_panel,
+            node_background,
             parameters_panel,
             parameters_title,
         }
@@ -234,6 +234,18 @@ pub mod feature {
                           (ids.parameters_panel,
                            widget::Canvas::new().length(300.0).color(color::BLUE))])
             .set(ids.canvas, ui);
+
+        for event in widgets::Background::new()
+                .parent(ids.node_panel)
+                .set(ids.node_background, ui) {
+            match event {
+                widgets::Event::Click => {
+                    params.selected_node = None;
+                }
+                _ => {}
+            }
+        }
+
 
         if let Some(id) = params.selected_node {
             if let Some(g_node) = params.gui_nodes.get(&id) {
