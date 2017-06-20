@@ -4,6 +4,7 @@ use std::cell::RefCell;
 
 use Node;
 use NodeUI;
+use NodeUIData;
 use StringFieldData;
 use FlowData;
 
@@ -49,5 +50,21 @@ impl Node for StringContains {
                                 label: String::from("Value"),
                                 field: String::from("value"),
                             })
+    }
+
+    fn get_value(&self, field: &String) -> NodeUIData {
+        if field == "value" {
+            return NodeUIData::StringData(self.value.clone());
+        }
+        NodeUIData::None
+    }
+
+    fn set_value(&mut self, field: &String, data: NodeUIData) {
+        match (field.as_ref(), data) {
+            ("value", NodeUIData::StringData(string)) => {
+                self.value = string;
+            }
+            _ => {}
+        }
     }
 }

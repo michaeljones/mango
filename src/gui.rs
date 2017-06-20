@@ -12,6 +12,7 @@ pub mod feature {
     use commands::{CreateNodeCommand, CreateConnectionCommand, Command, CommandGroup, UndoStack};
     use params::Params;
     use NodeUI;
+    use NodeUIData;
     use widgets;
 
     use std::rc::Rc;
@@ -43,6 +44,7 @@ pub mod feature {
             node_background,
             parameters_panel,
             parameters_title,
+            parameters_field,
         }
     }
 
@@ -246,12 +248,11 @@ pub mod feature {
             }
         }
 
-
         if let Some(id) = params.selected_node {
             if let Some(g_node) = params.gui_nodes.get(&id) {
                 let n = g_node.borrow();
                 if let Some(node) = params.node_map.get(&n.node_id) {
-                    let nn = node.borrow();
+                    let mut nn = node.borrow_mut();
                     let param_ui = nn.get_ui();
                     match param_ui {
                         NodeUI::None => {
@@ -260,11 +261,26 @@ pub mod feature {
                                 .middle_of(ids.parameters_panel)
                                 .set(ids.parameters_title, ui);
                         }
-                        NodeUI::StringField(_data) => {
-                            widget::Text::new("StringField")
-                                .parent(ids.parameters_panel)
-                                .middle_of(ids.parameters_panel)
-                                .set(ids.parameters_title, ui);
+                        NodeUI::StringField(data) => {
+                            if let NodeUIData::StringData(value) = nn.get_value(&data.field) {
+                                for event in widget::TextBox::new(value.as_str())
+                                        .parent(ids.parameters_panel)
+                                        .middle_of(ids.parameters_panel)
+                                        .color(color::WHITE)
+                                        .w(200.0)
+                                        .h(30.0)
+                                        .left_justify()
+                                        .set(ids.parameters_field, ui) {
+
+                                    match event {
+                                        widget::text_box::Event::Update(string) => {
+                                            nn.set_value(&data.field,
+                                                         NodeUIData::StringData(string));
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
                         }
                     }
                 }

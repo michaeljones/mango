@@ -37,13 +37,28 @@ pub enum NodeUI {
     StringField(StringFieldData),
 }
 
+#[derive(Debug)]
+pub enum NodeUIData {
+    None,
+    StringData(String),
+}
+
 pub trait Node {
     fn id(&self) -> i64;
+
     fn pull(&mut self) -> FlowData;
+
     fn set_input(&mut self, node: Option<Rc<RefCell<Node>>>, index: Option<i64>) -> ();
+
     fn get_ui(&self) -> NodeUI {
         NodeUI::None
     }
+
+    fn get_value(&self, _field: &String) -> NodeUIData {
+        NodeUIData::None
+    }
+
+    fn set_value(&mut self, _field: &String, _data: NodeUIData) {}
 }
 
 type NodeRef = Rc<RefCell<Node>>;
