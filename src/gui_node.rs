@@ -76,6 +76,7 @@ pub enum Event {
     None,
     ConnectInput,
     ConnectOutput,
+    Click,
 }
 
 /// A custom Conrod widget must implement the Widget trait. See the **Widget** trait
@@ -132,6 +133,11 @@ impl Widget for GuiNode {
                         if data.mode == Mode::Drag {
                             data.x = data.origin_x + drag.total_delta_xy[0];
                             data.y = data.origin_y + drag.total_delta_xy[1];
+                        }
+                    }
+                    conrod::event::Widget::Click(click) => {
+                        if click.button == conrod::input::state::mouse::Button::Left {
+                            output_event = Event::Click;
                         }
                     }
                     conrod::event::Widget::Press(press) => {

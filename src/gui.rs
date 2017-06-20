@@ -445,6 +445,9 @@ pub mod feature {
                     .h(30.0)
                     .set(id, ui) {
                 match event {
+                    gui_node::Event::Click => {
+                        params.selected_node = Some(id);
+                    }
                     gui_node::Event::ConnectOutput => {
                         let global = ui.global_input();
                         let ref state = global.current;
