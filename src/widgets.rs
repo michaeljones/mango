@@ -76,6 +76,7 @@ impl Widget for Background {
     /// Update the state of the button by handling any input that has occurred since the last
     /// update.
     fn update(self, args: widget::UpdateArgs<Self>) -> Self::Event {
+        use conrod::{color, Colorable};
 
         let widget::UpdateArgs {
             id,
@@ -108,6 +109,7 @@ impl Widget for Background {
         widget::Canvas::new()
             .graphics_for(id)
             .parent(parent_id)
+            .color(color::DARK_CHARCOAL)
             .set(state.ids.canvas, ui);
 
         Some(output_event)
