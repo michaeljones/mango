@@ -9,8 +9,9 @@ pub mod feature {
 
     use gui_node;
     use build;
-    use commands::{CreateNodeCommand, CreateConnectionCommand, Command, CommandGroup, UndoStack};
-    use params::Params;
+    use commands::{CreateNodeCommand, CreateConnectionCommand, DisconnectCommand, Command,
+                   CommandGroup, UndoStack};
+    use params::{Params, CreateState};
     use Node;
     use NodeUI;
     use NodeUIData;
@@ -28,6 +29,7 @@ pub mod feature {
     use conrod::graph::Walker;
     use std;
 
+    #[derive(Debug)]
     pub struct Connection {
         pub id: conrod::widget::id::Id,
         pub from: i64,
@@ -91,7 +93,7 @@ pub mod feature {
 
         let mut params = Params {
             node_id: 0,
-            display_menu: false,
+            display_menu: CreateState::None,
             mouse_x: 0.0,
             mouse_y: 0.0,
             tab_x: 0.0,
@@ -102,7 +104,7 @@ pub mod feature {
             connect_node: None,
             node_map: HashMap::new(),
             current_connection: None,
-            connections: vec![],
+            connections: HashMap::new(),
             selected_node: None,
         };
 
@@ -143,27 +145,44 @@ pub mod feature {
 
                     match event {
                         Input::Release(Button::Keyboard(Key::A)) => {
-                            if !params.display_menu {
-                                params.display_menu = true;
+                            if params.display_menu == CreateState::None {
                                 if let Some(index) = params.selected_node {
+                                    params.display_menu = CreateState::After;
                                     if let Some(node) = find_gui_node(index, &params.gui_nodes) {
                                         let b = node.borrow();
                                         params.tab_x = b.x + 200.0;
                                         params.tab_y = b.y;
                                     }
                                 } else {
+                                    params.display_menu = CreateState::Free;
+                                    params.tab_x = params.mouse_x;
+                                    params.tab_y = params.mouse_y;
+                                }
+                            }
+                        }
+                        Input::Release(Button::Keyboard(Key::I)) => {
+                            if params.display_menu == CreateState::None {
+                                if let Some(index) = params.selected_node {
+                                    params.display_menu = CreateState::Before;
+                                    if let Some(node) = find_gui_node(index, &params.gui_nodes) {
+                                        let b = node.borrow();
+                                        params.tab_x = b.x - 200.0;
+                                        params.tab_y = b.y;
+                                    }
+                                } else {
+                                    params.display_menu = CreateState::Free;
                                     params.tab_x = params.mouse_x;
                                     params.tab_y = params.mouse_y;
                                 }
                             }
                         }
                         Input::Release(Button::Keyboard(Key::U)) => {
-                            if !params.display_menu {
+                            if params.display_menu == CreateState::None {
                                 undo_stack.undo(&mut params);
                             }
                         }
                         Input::Release(Button::Keyboard(Key::R)) => {
-                            if !params.display_menu {
+                            if params.display_menu == CreateState::None {
                                 let global = ui.global_input();
                                 let ref state = global.current;
                                 if state.modifiers.contains(conrod::input::keyboard::CTRL) {
@@ -178,7 +197,7 @@ pub mod feature {
                             params.mouse_y = y as f64;
                         }
                         Input::Release(Button::Keyboard(Key::Escape)) => {
-                            params.display_menu = false;
+                            params.display_menu = CreateState::None;
                             params.name_input = String::from("");
                         }
                         _ => {}
@@ -315,7 +334,7 @@ pub mod feature {
             }
         }
 
-        if params.display_menu {
+        if params.display_menu != CreateState::None {
             widget::Canvas::new()
                 .color(color::RED)
                 .pad(5.0)
@@ -337,7 +356,7 @@ pub mod feature {
                     widget::text_box::Event::Enter => {
                         create_node(params, undo_stack, ui.widget_id_generator());
                         params.name_input = "".to_string();
-                        params.display_menu = false;
+                        params.display_menu = CreateState::None;
                     }
                 }
             }
@@ -380,6 +399,7 @@ pub mod feature {
                     }
                     gui_node::Event::ConnectInput => {
 
+                        /*
                         let mut nnn: Option<&Rc<RefCell<gui_node::GuiNodeData>>> = None;
 
                         {
@@ -435,6 +455,7 @@ pub mod feature {
                             None => {}
                         }
                         params.current_connection = None;
+                        */
                     }
                     _ => {}
                 }
@@ -486,7 +507,7 @@ pub mod feature {
             }
         }
 
-        for connection in &params.connections {
+        for (_key, connection) in &params.connections {
             match (find_node(connection.from, &params.gui_nodes),
                    find_node(connection.to, &params.gui_nodes)) {
                 (Some(a), Some(b)) => {
@@ -511,19 +532,28 @@ pub mod feature {
             .set(ids.scrollbar, ui);
     }
 
+    fn find_input_node(id: i64, connections: &HashMap<(i64, i64), Connection>) -> Option<i64> {
+        for (_key, connection) in connections {
+            if connection.to == id {
+                return Some(connection.from);
+            }
+        }
+        None
+    }
+
     fn create_node(mut params: &mut Params,
                    mut undo_stack: &mut UndoStack,
                    mut generator: conrod::widget::id::Generator)
                    -> () {
-        let node_id = params.node_id + 1;
+        let new_node_id = params.node_id + 1;
         params.node_id = params.node_id + 1;
-        let maybe_node = build::build(node_id, params.name_input.clone());
+        let maybe_node = build::build(new_node_id, params.name_input.clone());
         if let Some(node) = maybe_node {
             let id = generator.next();
             let g_node = Rc::new(RefCell::new(gui_node::GuiNodeData {
                                                   id: id,
                                                   parameter_ids: conrod::widget::id::List::new(),
-                                                  node_id: node_id,
+                                                  node_id: new_node_id,
                                                   label: params.name_input.clone(),
                                                   x: params.tab_x,
                                                   y: params.tab_y,
@@ -543,17 +573,31 @@ pub mod feature {
             if let Some(index) = params.selected_node {
                 if let Some(node) = find_gui_node(index, &params.gui_nodes) {
                     let b = node.borrow();
-                    let connection_id;
-                    {
-                        connection_id = generator.next();
+                    let connection_id = generator.next();
+
+                    match params.display_menu {
+                        CreateState::Before => {
+                            if let Some(connected) = find_input_node(b.node_id,
+                                                                     &params.connections) {
+                                commands.push(CreateConnectionCommand::new_ref(generator.next(),
+                                                                               connected,
+                                                                               new_node_id));
+
+                                commands.push(DisconnectCommand::new_ref(connected, b.node_id));
+                            }
+
+                            commands.push(CreateConnectionCommand::new_ref(connection_id,
+                                                                           new_node_id,
+                                                                           b.node_id));
+                        }
+                        CreateState::After => {
+                            let command = CreateConnectionCommand::new_ref(connection_id,
+                                                                           b.node_id,
+                                                                           new_node_id);
+                            commands.push(command);
+                        }
+                        _ => {}
                     }
-
-                    let command =
-                        CreateConnectionCommand::new_ref(connection_id, b.node_id, node_id);
-
-                    commands.push(command);
-
-
                 }
             }
 
