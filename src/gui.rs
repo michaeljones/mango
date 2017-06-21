@@ -11,6 +11,7 @@ pub mod feature {
     use build;
     use commands::{CreateNodeCommand, CreateConnectionCommand, Command, CommandGroup, UndoStack};
     use params::Params;
+    use Node;
     use NodeUI;
     use NodeUIData;
     use widgets;
@@ -19,6 +20,7 @@ pub mod feature {
     use std::cell::RefCell;
     use std::collections::HashMap;
     use std::ops::DerefMut;
+    use std::ops::Deref;
 
     use conrod;
     use conrod::backend::glium::glium;
@@ -43,8 +45,6 @@ pub mod feature {
             node_panel,
             node_background,
             parameters_panel,
-            parameters_title,
-            parameters_field,
         }
     }
 
@@ -223,6 +223,50 @@ pub mod feature {
         }
     }
 
+    fn draw_parameters(_gn: &Rc<RefCell<gui_node::GuiNodeData>>,
+                       node: &Rc<RefCell<Node>>,
+                       parent_id: conrod::widget::id::Id,
+                       param_ui: &NodeUI,
+                       ids: &mut conrod::widget::id::List,
+                       ui: &mut conrod::UiCell) {
+        use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};
+
+        match param_ui {
+            &NodeUI::None => {
+                let id = ids.walk().next(ids, &mut ui.widget_id_generator());
+                widget::Text::new("Nothing")
+                    .parent(parent_id)
+                    .middle_of(parent_id)
+                    .set(id, ui);
+            }
+            &NodeUI::StringField(ref data) => {
+                let mut bn = node.borrow_mut();
+                let mut nn = bn.deref_mut();
+                let id = ids.walk().next(ids, &mut ui.widget_id_generator());
+
+                if let NodeUIData::StringData(value) = nn.get_value(&data.field) {
+                    for event in widget::TextBox::new(value.as_str())
+                            .parent(parent_id)
+                            .middle_of(parent_id)
+                            .color(color::WHITE)
+                            .w(200.0)
+                            .h(30.0)
+                            .left_justify()
+                            .set(id, ui) {
+
+                        match event {
+                            widget::text_box::Event::Update(string) => {
+                                nn.set_value(&data.field, NodeUIData::StringData(string));
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+
     fn set_ui(ref mut ui: conrod::UiCell,
               ids: &mut Ids,
               params: &mut Params,
@@ -252,39 +296,21 @@ pub mod feature {
 
         if let Some(id) = params.selected_node {
             if let Some(g_node) = params.gui_nodes.get(&id) {
-                let n = g_node.borrow();
-                if let Some(node) = params.node_map.get(&n.node_id) {
-                    let mut nn = node.borrow_mut();
-                    let param_ui = nn.get_ui();
-                    match param_ui {
-                        NodeUI::None => {
-                            widget::Text::new("Nothing")
-                                .parent(ids.parameters_panel)
-                                .middle_of(ids.parameters_panel)
-                                .set(ids.parameters_title, ui);
-                        }
-                        NodeUI::StringField(data) => {
-                            if let NodeUIData::StringData(value) = nn.get_value(&data.field) {
-                                for event in widget::TextBox::new(value.as_str())
-                                        .parent(ids.parameters_panel)
-                                        .middle_of(ids.parameters_panel)
-                                        .color(color::WHITE)
-                                        .w(200.0)
-                                        .h(30.0)
-                                        .left_justify()
-                                        .set(ids.parameters_field, ui) {
-
-                                    match event {
-                                        widget::text_box::Event::Update(string) => {
-                                            nn.set_value(&data.field,
-                                                         NodeUIData::StringData(string));
-                                        }
-                                        _ => {}
-                                    }
-                                }
-                            }
-                        }
+                let mut gn = g_node.borrow_mut();
+                let node_id = gn.node_id;
+                if let Some(node) = params.node_map.get(&node_id) {
+                    let param_ui;
+                    {
+                        let bn = node.borrow();
+                        let nn = bn.deref();
+                        param_ui = nn.get_ui();
                     }
+                    draw_parameters(&g_node,
+                                    &node,
+                                    ids.parameters_panel,
+                                    &param_ui,
+                                    &mut gn.parameter_ids,
+                                    ui);
                 }
             }
         }
@@ -496,6 +522,7 @@ pub mod feature {
             let id = generator.next();
             let g_node = Rc::new(RefCell::new(gui_node::GuiNodeData {
                                                   id: id,
+                                                  parameter_ids: conrod::widget::id::List::new(),
                                                   node_id: node_id,
                                                   label: params.name_input.clone(),
                                                   x: params.tab_x,
