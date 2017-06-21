@@ -14,6 +14,7 @@ pub enum Mode {
 #[derive(Debug)]
 pub struct GuiNodeData {
     pub id: conrod::widget::id::Id,
+    pub parameter_ids: conrod::widget::id::List,
     pub node_id: i64,
     pub label: String,
     pub x: f64,

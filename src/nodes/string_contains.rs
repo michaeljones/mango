@@ -3,6 +3,9 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 use Node;
+use NodeUI;
+use NodeUIData;
+use StringFieldData;
 use FlowData;
 
 pub struct StringContains {
@@ -40,5 +43,28 @@ impl Node for StringContains {
 
     fn set_input(&mut self, node: Option<Rc<RefCell<Node>>>, _index: Option<i64>) -> () {
         self.input = node;
+    }
+
+    fn get_ui(&self) -> NodeUI {
+        NodeUI::StringField(StringFieldData {
+                                label: String::from("Value"),
+                                field: String::from("value"),
+                            })
+    }
+
+    fn get_value(&self, field: &String) -> NodeUIData {
+        if field == "value" {
+            return NodeUIData::StringData(self.value.clone());
+        }
+        NodeUIData::None
+    }
+
+    fn set_value(&mut self, field: &String, data: NodeUIData) {
+        match (field.as_ref(), data) {
+            ("value", NodeUIData::StringData(string)) => {
+                self.value = string;
+            }
+            _ => {}
+        }
     }
 }
