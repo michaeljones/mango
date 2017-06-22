@@ -11,7 +11,7 @@ pub mod feature {
     use build;
     use commands::{CreateNodeCommand, CreateConnectionCommand, DisconnectCommand, Command,
                    CommandGroup, UndoStack};
-    use params::{Params, CreateState};
+    use params::{Params, CreateState, CommandLine};
     use Node;
     use NodeUI;
     use NodeUIData;
@@ -28,6 +28,18 @@ pub mod feature {
     use conrod::backend::glium::glium::{DisplayBuild, Surface};
     use conrod::graph::Walker;
     use std;
+
+    mod commandline {
+        use params::Params;
+
+        pub fn run(text: &String, params: &mut Params) -> bool {
+            let components: Vec<&str> = text.split_whitespace().collect();
+            if components.len() == 2 && components[0] == "w" {
+                return true;
+            }
+            false
+        }
+    }
 
     #[derive(Debug)]
     pub struct Connection {
@@ -47,6 +59,7 @@ pub mod feature {
             node_panel,
             node_background,
             parameters_panel,
+            command_line,
         }
     }
 
@@ -106,6 +119,7 @@ pub mod feature {
             current_connection: None,
             connections: HashMap::new(),
             selected_node: None,
+            command_line: CommandLine::None,
         };
 
         let mut undo_stack = UndoStack::new();
@@ -143,64 +157,70 @@ pub mod feature {
                     ui.handle_event(event.clone());
                     ui_needs_update = true;
 
-                    match event {
-                        Input::Release(Button::Keyboard(Key::A)) => {
-                            if params.display_menu == CreateState::None {
-                                if let Some(index) = params.selected_node {
-                                    params.display_menu = CreateState::After;
-                                    if let Some(node) = find_gui_node(index, &params.gui_nodes) {
-                                        let b = node.borrow();
-                                        params.tab_x = b.x + 200.0;
-                                        params.tab_y = b.y;
-                                    }
-                                } else {
-                                    params.display_menu = CreateState::Free;
-                                    params.tab_x = params.mouse_x;
-                                    params.tab_y = params.mouse_y;
+                    let entering_text = params.display_menu != CreateState::None ||
+                                        params.command_line != CommandLine::None;
+
+                    match (entering_text, event) {
+                        (false, Input::Release(Button::Keyboard(Key::A))) => {
+                            if let Some(index) = params.selected_node {
+                                params.display_menu = CreateState::After;
+                                if let Some(node) = find_gui_node(index, &params.gui_nodes) {
+                                    let b = node.borrow();
+                                    params.tab_x = b.x + 200.0;
+                                    params.tab_y = b.y;
+                                }
+                            } else {
+                                params.display_menu = CreateState::Free;
+                                params.tab_x = params.mouse_x;
+                                params.tab_y = params.mouse_y;
+                            }
+                        }
+                        (false, Input::Release(Button::Keyboard(Key::I))) => {
+                            if let Some(index) = params.selected_node {
+                                params.display_menu = CreateState::Before;
+                                if let Some(node) = find_gui_node(index, &params.gui_nodes) {
+                                    let b = node.borrow();
+                                    params.tab_x = b.x - 200.0;
+                                    params.tab_y = b.y;
+                                }
+                            } else {
+                                params.display_menu = CreateState::Free;
+                                params.tab_x = params.mouse_x;
+                                params.tab_y = params.mouse_y;
+                            }
+                        }
+                        (false, Input::Release(Button::Keyboard(Key::U))) => {
+                            undo_stack.undo(&mut params);
+                        }
+                        (false, Input::Release(Button::Keyboard(Key::R))) => {
+                            let global = ui.global_input();
+                            let ref state = global.current;
+                            if state.modifiers.contains(conrod::input::keyboard::CTRL) {
+                                undo_stack.redo(&mut params);
+                            }
+                        }
+                        (true, Input::Release(Button::Keyboard(Key::Escape))) => {
+                            if params.display_menu != CreateState::None {
+                                params.display_menu = CreateState::None;
+                                params.name_input = String::from("");
+                            } else if params.command_line != CommandLine::None {
+                                params.command_line = CommandLine::None;
+                            }
+                        }
+                        (false, Input::Text(text)) => {
+                            if text == ":" {
+                                if params.display_menu == CreateState::None {
+                                    params.command_line = CommandLine::Text(String::from(""))
                                 }
                             }
                         }
-                        Input::Release(Button::Keyboard(Key::I)) => {
-                            if params.display_menu == CreateState::None {
-                                if let Some(index) = params.selected_node {
-                                    params.display_menu = CreateState::Before;
-                                    if let Some(node) = find_gui_node(index, &params.gui_nodes) {
-                                        let b = node.borrow();
-                                        params.tab_x = b.x - 200.0;
-                                        params.tab_y = b.y;
-                                    }
-                                } else {
-                                    params.display_menu = CreateState::Free;
-                                    params.tab_x = params.mouse_x;
-                                    params.tab_y = params.mouse_y;
-                                }
-                            }
-                        }
-                        Input::Release(Button::Keyboard(Key::U)) => {
-                            if params.display_menu == CreateState::None {
-                                undo_stack.undo(&mut params);
-                            }
-                        }
-                        Input::Release(Button::Keyboard(Key::R)) => {
-                            if params.display_menu == CreateState::None {
-                                let global = ui.global_input();
-                                let ref state = global.current;
-                                if state.modifiers.contains(conrod::input::keyboard::CTRL) {
-                                    undo_stack.redo(&mut params);
-                                }
-                            }
-                        }
-                        Input::Release(Button::Keyboard(Key::Backspace)) |
-                        Input::Release(Button::Keyboard(Key::Delete)) => {}
-                        Input::Motion(Motion::MouseCursor { x, y }) => {
+                        (_, Input::Motion(Motion::MouseCursor { x, y })) => {
                             params.mouse_x = x as f64;
                             params.mouse_y = y as f64;
                         }
-                        Input::Release(Button::Keyboard(Key::Escape)) => {
-                            params.display_menu = CreateState::None;
-                            params.name_input = String::from("");
+                        event => {
+                            // println!("{:?}", event);
                         }
-                        _ => {}
                     }
                 }
 
@@ -357,6 +377,28 @@ pub mod feature {
                         create_node(params, undo_stack, ui.widget_id_generator());
                         params.name_input = "".to_string();
                         params.display_menu = CreateState::None;
+                    }
+                }
+            }
+        }
+
+        if let CommandLine::Text(text) = params.command_line.clone() {
+            for event in widget::TextBox::new(text.as_str())
+                    .parent(ids.node_panel)
+                    .color(color::WHITE)
+                    .h(30.0)
+                    .bottom_left_of(ids.node_panel)
+                    .left_justify()
+                    .set(ids.command_line, ui) {
+
+                match event {
+                    widget::text_box::Event::Update(string) => {
+                        params.command_line = CommandLine::Text(string);
+                    }
+                    widget::text_box::Event::Enter => {
+                        if commandline::run(&text, params) {
+                            params.command_line = CommandLine::None;
+                        }
                     }
                 }
             }
@@ -526,6 +568,7 @@ pub mod feature {
                 }
             }
         }
+
 
         widget::Scrollbar::y_axis(ids.canvas)
             .auto_hide(true)
