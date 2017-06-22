@@ -9,10 +9,18 @@ use gui_node;
 use Node;
 use gui::feature::Connection;
 
+#[derive(PartialEq)]
+pub enum CreateState {
+    None,
+    Before,
+    After,
+    Free,
+}
+
 
 pub struct Params {
     pub node_id: i64,
-    pub display_menu: bool,
+    pub display_menu: CreateState,
     pub mouse_x: f64,
     pub mouse_y: f64,
     pub tab_x: f64,
@@ -23,6 +31,6 @@ pub struct Params {
     pub connect_node: Option<Rc<RefCell<gui_node::GuiNodeData>>>,
     pub node_map: HashMap<i64, Rc<RefCell<Node>>>,
     pub current_connection: Option<conrod::position::Point>,
-    pub connections: Vec<Connection>,
+    pub connections: HashMap<(i64, i64), Connection>,
     pub selected_node: Option<conrod::widget::id::Id>,
 }

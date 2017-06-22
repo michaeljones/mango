@@ -57,6 +57,8 @@ impl Command for CreateNodeCommand {
     }
 }
 
+// CreateConnectionCommand
+//
 pub struct CreateConnectionCommand {
     id: conrod::widget::id::Id,
     from: i64,
@@ -80,21 +82,71 @@ impl CreateConnectionCommand {
 impl Command for CreateConnectionCommand {
     fn execute(&mut self, mut params: &mut Params) {
         build::connect(self.from, None, self.to, Some(1), &params.node_map);
+
         params
             .connections
-            .push(Connection {
-                      id: self.id,
-                      from: self.from,
-                      to: self.to,
-                  });
+            .insert((self.from, self.to),
+                    Connection {
+                        id: self.id,
+                        from: self.from,
+                        to: self.to,
+                    });
     }
 
     fn undo(&mut self, params: &mut Params) {
         build::disconnect(self.to, Some(1), &params.node_map);
-        params.connections.pop();
+        params.connections.remove(&(self.from, self.to));
     }
 }
 
+// DisconnectCommand
+//
+pub struct DisconnectCommand {
+    from: i64,
+    to: i64,
+    connection: Option<Connection>,
+}
+
+impl DisconnectCommand {
+    pub fn new(from: i64, to: i64) -> Self {
+        DisconnectCommand {
+            from: from,
+            to: to,
+            connection: None,
+        }
+    }
+
+    pub fn new_ref(from: i64, to: i64) -> Rc<RefCell<Self>> {
+        Rc::new(RefCell::new(DisconnectCommand::new(from, to)))
+    }
+}
+
+impl Command for DisconnectCommand {
+    fn execute(&mut self, mut params: &mut Params) {
+        build::disconnect(self.to, Some(1), &params.node_map);
+        self.connection = params.connections.remove(&(self.from, self.to));
+    }
+
+    fn undo(&mut self, params: &mut Params) {
+        build::connect(self.from, None, self.to, Some(1), &params.node_map);
+
+        if let Some(ref conn) = self.connection {
+            // I can't figure out how to clone the old connection so I have to create a new one
+            // with the same data to insert into the map
+            params
+                .connections
+                .insert((self.from, self.to),
+                        Connection {
+                            id: conn.id,
+                            from: self.from,
+                            to: self.to,
+                        });
+        }
+    }
+}
+
+// Command Group
+//
 pub struct CommandGroup {
     commands: Vec<Rc<RefCell<Command>>>,
 }
