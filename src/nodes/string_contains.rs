@@ -2,6 +2,8 @@
 use std::rc::Rc;
 use std::cell::RefCell;
 
+use Spec;
+use SpecAttribute;
 use Node;
 use NodeUI;
 use NodeUIData;
@@ -65,6 +67,14 @@ impl Node for StringContains {
                 self.value = string;
             }
             _ => {}
+        }
+    }
+
+    fn get_spec(&self) -> Spec {
+        Spec {
+            id: self.id,
+            type_: String::from("string-contains"),
+            attributes: vec![SpecAttribute::String(String::from("value"), self.value.clone())],
         }
     }
 }

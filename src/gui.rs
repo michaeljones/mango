@@ -31,10 +31,52 @@ pub mod feature {
 
     mod commandline {
         use params::Params;
+        use std::collections::BTreeMap;
+        use std::fs::File;
+        use std::io::prelude::*;
+        use yaml_rust::yaml::Yaml;
+        use yaml_rust::emitter::YamlEmitter;
+        use std::io::Write;
+
+        use SpecAttribute;
 
         pub fn run(text: &String, params: &mut Params) -> bool {
             let components: Vec<&str> = text.split_whitespace().collect();
             if components.len() == 2 && components[0] == "w" {
+                let nodes = params
+                    .node_map
+                    .values()
+                    .map(|node| {
+                        let n = node.borrow();
+                        let spec = n.get_spec();
+                        let mut hash = BTreeMap::new();
+                        hash.insert(Yaml::String(String::from("id")), Yaml::Integer(spec.id));
+                        hash.insert(Yaml::String(String::from("type")),
+                                    Yaml::String(String::from(spec.type_)));
+                        for entry in spec.attributes {
+                            match entry {
+                                SpecAttribute::String(name, value) => {
+                                    hash.insert(Yaml::String(name), Yaml::String(value));
+                                }
+                                SpecAttribute::Int(name, value) => {
+                                    hash.insert(Yaml::String(name), Yaml::Integer(value));
+                                }
+                            }
+                        }
+
+                        Yaml::Hash(hash)
+                    })
+                    .collect();
+
+                let doc = Yaml::Array(nodes);
+                let mut buffer = String::new();
+                {
+                    let mut emitter = YamlEmitter::new(&mut buffer);
+                    emitter.dump(&doc);
+                }
+
+                let mut file = File::create(components[1]).unwrap();
+                file.write_all(buffer.as_bytes());
                 return true;
             }
             false

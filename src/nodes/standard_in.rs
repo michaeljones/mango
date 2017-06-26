@@ -4,6 +4,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std;
 
+use Spec;
 use Node;
 use FlowData;
 
@@ -35,4 +36,12 @@ impl Node for StandardIn {
     }
 
     fn set_input(&mut self, _node: Option<Rc<RefCell<Node>>>, _index: Option<i64>) -> () {}
+
+    fn get_spec(&self) -> Spec {
+        Spec {
+            id: self.id,
+            type_: String::from("standard-in"),
+            attributes: vec![],
+        }
+    }
 }
