@@ -68,11 +68,36 @@ pub mod feature {
                     })
                     .collect();
 
-                let doc = Yaml::Array(nodes);
+                let connections = params
+                    .connections
+                    .values()
+                    .map(|connection| {
+
+                        let mut from_hash = BTreeMap::new();
+                        from_hash.insert(Yaml::String(String::from("node")),
+                                         Yaml::Integer(connection.from));
+
+                        let mut to_hash = BTreeMap::new();
+                        to_hash.insert(Yaml::String(String::from("node")),
+                                       Yaml::Integer(connection.to));
+
+                        let mut hash = BTreeMap::new();
+                        hash.insert(Yaml::String(String::from("from")), Yaml::Hash(from_hash));
+                        hash.insert(Yaml::String(String::from("to")), Yaml::Hash(to_hash));
+                        Yaml::Hash(hash)
+                    })
+                    .collect();
+
+                let mut doc_hash = BTreeMap::new();
+
+                doc_hash.insert(Yaml::String(String::from("nodes")), Yaml::Array(nodes));
+                doc_hash.insert(Yaml::String(String::from("connections")),
+                                Yaml::Array(connections));
+
                 let mut buffer = String::new();
                 {
                     let mut emitter = YamlEmitter::new(&mut buffer);
-                    emitter.dump(&doc);
+                    emitter.dump(&Yaml::Hash(doc_hash));
                 }
 
                 let mut file = File::create(components[1]).unwrap();
