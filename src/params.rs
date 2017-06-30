@@ -18,6 +18,12 @@ pub enum CreateState {
 }
 
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum CommandLine {
+    None,
+    Text(String),
+}
+
 pub struct Params {
     pub node_id: i64,
     pub display_menu: CreateState,
@@ -33,4 +39,5 @@ pub struct Params {
     pub current_connection: Option<conrod::position::Point>,
     pub connections: HashMap<(i64, i64), Connection>,
     pub selected_node: Option<conrod::widget::id::Id>,
+    pub command_line: CommandLine,
 }

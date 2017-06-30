@@ -4,6 +4,7 @@ extern crate json;
 use std::rc::Rc;
 use std::cell::RefCell;
 
+use Spec;
 use Node;
 use FlowData;
 
@@ -52,6 +53,14 @@ impl Node for JsonObject {
             }
             Some(_) => println!("Invalid input index for json-object"),
             None => println!("Missing input index for json-object"),
+        }
+    }
+
+    fn get_spec(&self) -> Spec {
+        Spec {
+            id: self.id,
+            type_: String::from("json-object"),
+            attributes: vec![],
         }
     }
 }

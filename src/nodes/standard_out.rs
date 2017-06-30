@@ -2,6 +2,7 @@
 use std::rc::Rc;
 use std::cell::RefCell;
 
+use Spec;
 use Node;
 use FlowData;
 
@@ -38,5 +39,13 @@ impl Node for StandardOut {
 
     fn set_input(&mut self, node: Option<Rc<RefCell<Node>>>, _index: Option<i64>) -> () {
         self.input = node;
+    }
+
+    fn get_spec(&self) -> Spec {
+        Spec {
+            id: self.id,
+            type_: String::from("standard-out"),
+            attributes: vec![],
+        }
     }
 }

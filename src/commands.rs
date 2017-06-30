@@ -13,7 +13,10 @@ use gui_node;
 
 pub trait Command {
     fn execute(&mut self, &mut Params);
+    fn redo(&mut self, params: &mut Params);
     fn undo(&mut self, params: &mut Params);
+
+    fn is_undoable(&self) -> bool { true }
 }
 
 pub struct CreateNodeCommand {
@@ -38,12 +41,15 @@ impl CreateNodeCommand {
 
 impl Command for CreateNodeCommand {
     fn execute(&mut self, params: &mut Params) {
+        self.previous_last_node = params.last_node.clone();
+        self.redo(params);
+    }
+
+    fn redo(&mut self, params: &mut Params) {
         let node = self.node.borrow();
         let g_node = self.g_node.borrow();
         params.node_map.insert(node.id(), self.node.clone());
         params.gui_nodes.insert(g_node.id, self.g_node.clone());
-
-        self.previous_last_node = params.last_node.clone();
         params.last_node = Some(self.g_node.clone());
     }
 
@@ -81,6 +87,10 @@ impl CreateConnectionCommand {
 
 impl Command for CreateConnectionCommand {
     fn execute(&mut self, mut params: &mut Params) {
+        self.redo(params)
+    }
+
+    fn redo(&mut self, mut params: &mut Params) {
         build::connect(self.from, None, self.to, Some(1), &params.node_map);
 
         params
@@ -123,8 +133,12 @@ impl DisconnectCommand {
 
 impl Command for DisconnectCommand {
     fn execute(&mut self, mut params: &mut Params) {
-        build::disconnect(self.to, Some(1), &params.node_map);
         self.connection = params.connections.remove(&(self.from, self.to));
+        self.redo(params)
+    }
+
+    fn redo(&mut self, mut params: &mut Params) {
+        build::disconnect(self.to, Some(1), &params.node_map);
     }
 
     fn undo(&mut self, params: &mut Params) {
@@ -169,6 +183,13 @@ impl Command for CommandGroup {
         }
     }
 
+    fn redo(&mut self, mut params: &mut Params) {
+        for command in &self.commands {
+            let mut com = command.borrow_mut();
+            com.redo(&mut params);
+        }
+    }
+
     fn undo(&mut self, mut params: &mut Params) {
         for command in self.commands.iter().rev() {
             let mut com = command.borrow_mut();
@@ -206,7 +227,7 @@ impl UndoStack {
     pub fn redo(&mut self, mut params: &mut Params) {
         if let Some(command) = self.redo.pop() {
             let mut com = command.borrow_mut();
-            com.execute(&mut params);
+            com.redo(&mut params);
             self.undo.push(command.clone());
         }
     }

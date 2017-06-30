@@ -1,6 +1,7 @@
 
 extern crate json;
 extern crate clap;
+extern crate yaml_rust;
 
 #[macro_use]
 extern crate conrod;
@@ -13,6 +14,7 @@ mod gui;
 mod gui_node;
 mod build;
 mod commands;
+mod commandline;
 mod params;
 mod widgets;
 
@@ -43,6 +45,17 @@ pub enum NodeUIData {
     StringData(String),
 }
 
+pub enum SpecAttribute {
+    String(String, String),
+    Int(String, i64),
+}
+
+pub struct Spec {
+    id: i64,
+    type_: String,
+    attributes: Vec<SpecAttribute>,
+}
+
 pub trait Node {
     fn id(&self) -> i64;
 
@@ -59,6 +72,8 @@ pub trait Node {
     }
 
     fn set_value(&mut self, _field: &String, _data: NodeUIData) {}
+
+    fn get_spec(&self) -> Spec;
 }
 
 type NodeRef = Rc<RefCell<Node>>;
