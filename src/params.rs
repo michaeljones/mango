@@ -14,6 +14,7 @@ pub enum CreateState {
     None,
     Before,
     After,
+    Substitute,
     Free,
 }
 

@@ -193,6 +193,20 @@ pub mod feature {
                                     params.tab_y = params.mouse_y;
                                 }
                             }
+                            Input::Release(Button::Keyboard(Key::S)) => {
+                                if let Some(index) = params.selected_node {
+                                    params.display_menu = CreateState::Substitute;
+                                    if let Some(node) = find_gui_node(index, &params.gui_nodes) {
+                                        let b = node.borrow();
+                                        params.tab_x = b.x;
+                                        params.tab_y = b.y;
+                                    }
+                                } else {
+                                    params.display_menu = CreateState::Free;
+                                    params.tab_x = params.mouse_x;
+                                    params.tab_y = params.mouse_y;
+                                }
+                            }
                             Input::Release(Button::Keyboard(Key::U)) => {
                                 undo_stack.undo(&mut params);
                             }
@@ -680,7 +694,22 @@ pub mod feature {
                                                                            new_node_id);
                             commands.push(command);
                         }
-                        _ => {}
+                        CreateState::Substitute => {
+                            let input_node =find_input_node(b.node_id, &params.connections);
+                            let output_node =find_output_node(b.node_id, &params.connections);
+                            match (input_node, output_node) {
+                                (Some(inode), Some(onode)) => {
+                                    commands.push(DisconnectCommand::new_ref(inode, b.node_id));
+                                    commands.push(DisconnectCommand::new_ref(b.node_id, onode));
+                                    commands.push(CreateConnectionCommand::new_ref(generator.next(), inode, new_node_id));
+                                    commands.push(CreateConnectionCommand::new_ref(generator.next(), new_node_id, onode));
+                                }
+                                _ => {
+                                }
+                            }
+                        }
+                        CreateState::None => {}
+                        CreateState::Free => {}
                     }
                 }
             }
