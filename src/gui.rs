@@ -149,96 +149,109 @@ pub mod feature {
                     let entering_text = params.display_menu != CreateState::None ||
                                         params.command_line != CommandLine::None;
 
-                    match (entering_text, event) {
-                        (false, Input::Release(Button::Keyboard(Key::A))) => {
-                            if let Some(index) = params.selected_node {
-                                params.display_menu = CreateState::After;
-                                if let Some(node) = find_gui_node(index, &params.gui_nodes) {
-                                    let b = node.borrow();
-                                    params.tab_x = b.x + 200.0;
-                                    params.tab_y = b.y;
-                                }
-                            } else {
-                                params.display_menu = CreateState::Free;
-                                params.tab_x = params.mouse_x;
-                                params.tab_y = params.mouse_y;
-                            }
-                        }
-                        (false, Input::Release(Button::Keyboard(Key::I))) => {
-                            if let Some(index) = params.selected_node {
-                                params.display_menu = CreateState::Before;
-                                if let Some(node) = find_gui_node(index, &params.gui_nodes) {
-                                    let b = node.borrow();
-                                    params.tab_x = b.x - 200.0;
-                                    params.tab_y = b.y;
-                                }
-                            } else {
-                                params.display_menu = CreateState::Free;
-                                params.tab_x = params.mouse_x;
-                                params.tab_y = params.mouse_y;
-                            }
-                        }
-                        (false, Input::Release(Button::Keyboard(Key::U))) => {
-                            undo_stack.undo(&mut params);
-                        }
-                        (false, Input::Release(Button::Keyboard(Key::R))) => {
-                            let global = ui.global_input();
-                            let ref state = global.current;
-                            if state.modifiers.contains(conrod::input::keyboard::CTRL) {
-                                undo_stack.redo(&mut params);
-                            }
-                        }
-                        (false, Input::Release(Button::Keyboard(Key::H))) => {
-                            if let Some(selected_node) = params.selected_node {
-                                if let Some(g_node) = params.gui_nodes.get(&selected_node) {
-                                    let gn = g_node.borrow();
-                                    if let Some(input_node_id) = find_input_node(gn.node_id, &params.connections) {
-                                        for (_key, g_node) in &params.gui_nodes {
-                                            let gnn = g_node.borrow();
-                                            if gnn.node_id == input_node_id {
-                                                params.selected_node = Some(gnn.id);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        (false, Input::Release(Button::Keyboard(Key::L))) => {
-                            if let Some(selected_node) = params.selected_node {
-                                if let Some(g_node) = params.gui_nodes.get(&selected_node) {
-                                    let gn = g_node.borrow();
-                                    if let Some(input_node_id) = find_output_node(gn.node_id, &params.connections) {
-                                        for (_key, g_node) in &params.gui_nodes {
-                                            let gnn = g_node.borrow();
-                                            if gnn.node_id == input_node_id {
-                                                params.selected_node = Some(gnn.id);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        (true, Input::Release(Button::Keyboard(Key::Escape))) => {
+                    if entering_text {
+                        match event.clone() {
+                            Input::Release(Button::Keyboard(Key::Escape)) => {
                             if params.display_menu != CreateState::None {
                                 params.display_menu = CreateState::None;
                                 params.name_input = String::from("");
                             } else if params.command_line != CommandLine::None {
                                 params.command_line = CommandLine::None;
                             }
-                        }
-                        (false, Input::Text(text)) => {
-                            if text == ":" {
-                                if params.display_menu == CreateState::None {
-                                    params.command_line = CommandLine::Text(String::from(""))
-                                }
+                            }
+                            _ => {
                             }
                         }
-                        (_, Input::Motion(Motion::MouseCursor { x, y })) => {
+                    }
+                    else {
+                        match event.clone() {
+                            Input::Release(Button::Keyboard(Key::A)) => {
+                                if let Some(index) = params.selected_node {
+                                    params.display_menu = CreateState::After;
+                                    if let Some(node) = find_gui_node(index, &params.gui_nodes) {
+                                        let b = node.borrow();
+                                        params.tab_x = b.x + 200.0;
+                                        params.tab_y = b.y;
+                                    }
+                                } else {
+                                    params.display_menu = CreateState::Free;
+                                    params.tab_x = params.mouse_x;
+                                    params.tab_y = params.mouse_y;
+                                }
+                            }
+                            Input::Release(Button::Keyboard(Key::I)) => {
+                                if let Some(index) = params.selected_node {
+                                    params.display_menu = CreateState::Before;
+                                    if let Some(node) = find_gui_node(index, &params.gui_nodes) {
+                                        let b = node.borrow();
+                                        params.tab_x = b.x - 200.0;
+                                        params.tab_y = b.y;
+                                    }
+                                } else {
+                                    params.display_menu = CreateState::Free;
+                                    params.tab_x = params.mouse_x;
+                                    params.tab_y = params.mouse_y;
+                                }
+                            }
+                            Input::Release(Button::Keyboard(Key::U)) => {
+                                undo_stack.undo(&mut params);
+                            }
+                            Input::Release(Button::Keyboard(Key::R)) => {
+                                let global = ui.global_input();
+                                let ref state = global.current;
+                                if state.modifiers.contains(conrod::input::keyboard::CTRL) {
+                                    undo_stack.redo(&mut params);
+                                }
+                            }
+                            Input::Release(Button::Keyboard(Key::H)) => {
+                                if let Some(selected_node) = params.selected_node {
+                                    if let Some(g_node) = params.gui_nodes.get(&selected_node) {
+                                        let gn = g_node.borrow();
+                                        if let Some(input_node_id) = find_input_node(gn.node_id, &params.connections) {
+                                            for (_key, g_node) in &params.gui_nodes {
+                                                let gnn = g_node.borrow();
+                                                if gnn.node_id == input_node_id {
+                                                    params.selected_node = Some(gnn.id);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Input::Release(Button::Keyboard(Key::L)) => {
+                                if let Some(selected_node) = params.selected_node {
+                                    if let Some(g_node) = params.gui_nodes.get(&selected_node) {
+                                        let gn = g_node.borrow();
+                                        if let Some(input_node_id) = find_output_node(gn.node_id, &params.connections) {
+                                            for (_key, g_node) in &params.gui_nodes {
+                                                let gnn = g_node.borrow();
+                                                if gnn.node_id == input_node_id {
+                                                    params.selected_node = Some(gnn.id);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Input::Text(text) => {
+                                if text == ":" {
+                                    if params.display_menu == CreateState::None {
+                                        params.command_line = CommandLine::Text(String::from(""))
+                                    }
+                                }
+                            }
+                            _ => {
+                                // println!("{:?}", event);
+                            }
+                        }
+
+                    }
+                    match event.clone() {
+                        Input::Motion(Motion::MouseCursor { x, y }) => {
                             params.mouse_x = x as f64;
                             params.mouse_y = y as f64;
                         }
-                        event => {
-                            // println!("{:?}", event);
+                        _ => {
                         }
                     }
                 }
@@ -611,7 +624,6 @@ pub mod feature {
         }
         None
     }
-
 
     fn create_node(mut params: &mut Params,
                    mut undo_stack: &mut UndoStack,
