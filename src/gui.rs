@@ -16,6 +16,7 @@ pub mod feature {
     use NodeUI;
     use NodeUIData;
     use widgets;
+    use commandline;
 
     use std::rc::Rc;
     use std::cell::RefCell;
@@ -28,85 +29,6 @@ pub mod feature {
     use conrod::backend::glium::glium::{DisplayBuild, Surface};
     use conrod::graph::Walker;
     use std;
-
-    mod commandline {
-        use params::Params;
-        use std::collections::BTreeMap;
-        use std::fs::File;
-        use std::io::prelude::*;
-        use yaml_rust::yaml::Yaml;
-        use yaml_rust::emitter::YamlEmitter;
-        use std::io::Write;
-
-        use SpecAttribute;
-
-        pub fn run(text: &String, params: &mut Params) -> bool {
-            let components: Vec<&str> = text.split_whitespace().collect();
-            if components.len() == 2 && components[0] == "w" {
-                let nodes = params
-                    .node_map
-                    .values()
-                    .map(|node| {
-                        let n = node.borrow();
-                        let spec = n.get_spec();
-                        let mut hash = BTreeMap::new();
-                        hash.insert(Yaml::String(String::from("id")), Yaml::Integer(spec.id));
-                        hash.insert(Yaml::String(String::from("type")),
-                                    Yaml::String(String::from(spec.type_)));
-                        for entry in spec.attributes {
-                            match entry {
-                                SpecAttribute::String(name, value) => {
-                                    hash.insert(Yaml::String(name), Yaml::String(value));
-                                }
-                                SpecAttribute::Int(name, value) => {
-                                    hash.insert(Yaml::String(name), Yaml::Integer(value));
-                                }
-                            }
-                        }
-
-                        Yaml::Hash(hash)
-                    })
-                    .collect();
-
-                let connections = params
-                    .connections
-                    .values()
-                    .map(|connection| {
-
-                        let mut from_hash = BTreeMap::new();
-                        from_hash.insert(Yaml::String(String::from("node")),
-                                         Yaml::Integer(connection.from));
-
-                        let mut to_hash = BTreeMap::new();
-                        to_hash.insert(Yaml::String(String::from("node")),
-                                       Yaml::Integer(connection.to));
-
-                        let mut hash = BTreeMap::new();
-                        hash.insert(Yaml::String(String::from("from")), Yaml::Hash(from_hash));
-                        hash.insert(Yaml::String(String::from("to")), Yaml::Hash(to_hash));
-                        Yaml::Hash(hash)
-                    })
-                    .collect();
-
-                let mut doc_hash = BTreeMap::new();
-
-                doc_hash.insert(Yaml::String(String::from("nodes")), Yaml::Array(nodes));
-                doc_hash.insert(Yaml::String(String::from("connections")),
-                                Yaml::Array(connections));
-
-                let mut buffer = String::new();
-                {
-                    let mut emitter = YamlEmitter::new(&mut buffer);
-                    emitter.dump(&Yaml::Hash(doc_hash));
-                }
-
-                let mut file = File::create(components[1]).unwrap();
-                file.write_all(buffer.as_bytes());
-                return true;
-            }
-            false
-        }
-    }
 
     #[derive(Debug)]
     pub struct Connection {

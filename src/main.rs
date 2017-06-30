@@ -14,6 +14,7 @@ mod gui;
 mod gui_node;
 mod build;
 mod commands;
+mod commandline;
 mod params;
 mod widgets;
 
