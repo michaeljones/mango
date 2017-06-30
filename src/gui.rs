@@ -385,7 +385,7 @@ pub mod feature {
                         params.command_line = CommandLine::Text(string);
                     }
                     widget::text_box::Event::Enter => {
-                        if commandline::run(&text, params) {
+                        if commandline::run(&text, params, undo_stack) {
                             params.command_line = CommandLine::None;
                         }
                     }

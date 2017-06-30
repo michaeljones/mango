@@ -1,24 +1,44 @@
 
-use params::Params;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::prelude::*;
+use std::io::Write;
+use std::rc::Rc;
+use std::cell::RefCell;
+
 use yaml_rust::yaml::Yaml;
 use yaml_rust::emitter::YamlEmitter;
-use std::io::Write;
 
 use SpecAttribute;
+use commands::{UndoStack, Command};
+use params::Params;
 
 
-struct Save {
+struct SaveCommand {
+    components: Vec<String>
 }
 
-impl Save {
+impl SaveCommand {
 
-    pub fn run(components: &Vec<&str>, params: &mut Params) -> bool {
+    pub fn new(components: &Vec<String>) -> Self {
+        SaveCommand {
+            components: components.clone(),
+        }
+    }
 
-        if components.len() == 1 {
-            return false;
+    pub fn new_ref(components: &Vec<String>) -> Rc<RefCell<Self>> {
+        Rc::new(RefCell::new(SaveCommand::new(components)))
+    }
+}
+
+impl Command for SaveCommand {
+
+    fn is_undoable(&self) -> bool { false }
+
+    fn execute(&mut self, params: &mut Params) {
+
+        if self.components.len() == 1 {
+            return;
         }
 
         let nodes = params
@@ -78,19 +98,41 @@ impl Save {
             emitter.dump(&Yaml::Hash(doc_hash));
         }
 
-        let mut file = File::create(components[1]).unwrap();
+        let mut file = File::create(self.components[1].clone()).unwrap();
         file.write_all(buffer.as_bytes());
-        return true;
+    }
+
+    fn redo(&mut self, params: &mut Params) {
+    }
+
+    fn undo(&mut self, params: &mut Params) {
     }
 }
 
 
-pub fn run(text: &String, params: &mut Params) -> bool {
+pub fn run(text: &String, params: &mut Params, undo_stack: &mut UndoStack) -> bool {
 
-    let components: Vec<&str> = text.split_whitespace().collect();
+    let components: Vec<String> = text.split_whitespace().map(|str| String::from(str)).collect();
     if components.len() > 1 {
-        if components.len() > 1 && components[0] == "w" {
-            return Save::run(&components, params);
+        let mut command = None;
+        if components[0] == "w" {
+            command = Some(SaveCommand::new_ref(&components));
+        }
+
+        if let Some(comm) = command {
+
+            let undoable;
+            {
+                let mut c = comm.borrow_mut();
+                c.execute(params);
+                undoable = c.is_undoable();
+            }
+
+            if undoable {
+                undo_stack.push(comm);
+            }
+
+            return true;
         }
     }
 
