@@ -188,6 +188,36 @@ pub mod feature {
                                 undo_stack.redo(&mut params);
                             }
                         }
+                        (false, Input::Release(Button::Keyboard(Key::H))) => {
+                            if let Some(selected_node) = params.selected_node {
+                                if let Some(g_node) = params.gui_nodes.get(&selected_node) {
+                                    let gn = g_node.borrow();
+                                    if let Some(input_node_id) = find_input_node(gn.node_id, &params.connections) {
+                                        for (_key, g_node) in &params.gui_nodes {
+                                            let gnn = g_node.borrow();
+                                            if gnn.node_id == input_node_id {
+                                                params.selected_node = Some(gnn.id);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        (false, Input::Release(Button::Keyboard(Key::L))) => {
+                            if let Some(selected_node) = params.selected_node {
+                                if let Some(g_node) = params.gui_nodes.get(&selected_node) {
+                                    let gn = g_node.borrow();
+                                    if let Some(input_node_id) = find_output_node(gn.node_id, &params.connections) {
+                                        for (_key, g_node) in &params.gui_nodes {
+                                            let gnn = g_node.borrow();
+                                            if gnn.node_id == input_node_id {
+                                                params.selected_node = Some(gnn.id);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         (true, Input::Release(Button::Keyboard(Key::Escape))) => {
                             if params.display_menu != CreateState::None {
                                 params.display_menu = CreateState::None;
@@ -572,6 +602,16 @@ pub mod feature {
         }
         None
     }
+
+    fn find_output_node(id: i64, connections: &HashMap<(i64, i64), Connection>) -> Option<i64> {
+        for (_key, connection) in connections {
+            if connection.from == id {
+                return Some(connection.to);
+            }
+        }
+        None
+    }
+
 
     fn create_node(mut params: &mut Params,
                    mut undo_stack: &mut UndoStack,
