@@ -39,6 +39,6 @@ pub struct Params {
     pub node_map: HashMap<i64, Rc<RefCell<Node>>>,
     pub current_connection: Option<conrod::position::Point>,
     pub connections: HashMap<(i64, i64), Connection>,
-    pub selected_node: Option<conrod::widget::id::Id>,
+    pub selected_nodes: Vec<conrod::widget::id::Id>,
     pub command_line: CommandLine,
 }

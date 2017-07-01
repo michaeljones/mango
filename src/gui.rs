@@ -9,8 +9,8 @@ pub mod feature {
 
     use gui_node;
     use build;
-    use commands::{CreateNodeCommand, CreateConnectionCommand, DisconnectCommand, DeleteNodeCommand,
-    Command,CommandGroup, UndoStack};
+    use commands::{CreateNodeCommand, CreateConnectionCommand, DisconnectCommand,
+                   DeleteNodeCommand, Command, CommandGroup, UndoStack};
     use params::{Params, CreateState, CommandLine};
     use Node;
     use NodeUI;
@@ -52,11 +52,13 @@ pub mod feature {
         }
     }
 
-    fn find_gui_node(id: conrod::widget::id::Id,
-                     nodes: &HashMap<conrod::widget::id::Id, Rc<RefCell<gui_node::GuiNodeData>>>)
-                     -> Option<&Rc<RefCell<gui_node::GuiNodeData>>> {
+    fn find_gui_node(
+        id: conrod::widget::id::Id,
+        nodes: &HashMap<conrod::widget::id::Id, Rc<RefCell<gui_node::GuiNodeData>>>,
+    ) -> Option<&Rc<RefCell<gui_node::GuiNodeData>>> {
         nodes.get(&id)
     }
+
 
     pub fn gui() {
         const WIDTH: u32 = 800;
@@ -78,8 +80,10 @@ pub mod feature {
         let mut ids = Ids::new(ui.widget_id_generator());
 
         // Add a `Font` to the `Ui`'s `font::Map` from file.
-        const FONT_PATH: &'static str = concat!(env!("CARGO_MANIFEST_DIR"),
-                                                "/assets/fonts/NotoSans/NotoSans-Regular.ttf");
+        const FONT_PATH: &'static str = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/assets/fonts/NotoSans/NotoSans-Regular.ttf"
+        );
         ui.fonts.insert_from_file(FONT_PATH).unwrap();
 
         // A type used for converting `conrod::render::Primitives` into `Command`s that can be used
@@ -107,7 +111,7 @@ pub mod feature {
             node_map: HashMap::new(),
             current_connection: None,
             connections: HashMap::new(),
-            selected_node: None,
+            selected_nodes: vec![],
             command_line: CommandLine::None,
         };
 
@@ -147,64 +151,86 @@ pub mod feature {
                     ui_needs_update = true;
 
                     let entering_text = params.display_menu != CreateState::None ||
-                                        params.command_line != CommandLine::None;
+                        params.command_line != CommandLine::None;
 
                     if entering_text {
                         match event.clone() {
                             Input::Release(Button::Keyboard(Key::Escape)) => {
-                            if params.display_menu != CreateState::None {
-                                params.display_menu = CreateState::None;
-                                params.name_input = String::from("");
-                            } else if params.command_line != CommandLine::None {
-                                params.command_line = CommandLine::None;
+                                if params.display_menu != CreateState::None {
+                                    params.display_menu = CreateState::None;
+                                    params.name_input = String::from("");
+                                } else if params.command_line != CommandLine::None {
+                                    params.command_line = CommandLine::None;
+                                }
                             }
-                            }
-                            _ => {
-                            }
+                            _ => {}
                         }
-                    }
-                    else {
+                    } else {
                         match event.clone() {
                             Input::Release(Button::Keyboard(Key::A)) => {
-                                if let Some(index) = params.selected_node {
-                                    params.display_menu = CreateState::After;
-                                    if let Some(node) = find_gui_node(index, &params.gui_nodes) {
-                                        let b = node.borrow();
-                                        params.tab_x = b.x + 200.0;
-                                        params.tab_y = b.y;
+                                match params.selected_nodes.len() {
+                                    0 => {
+                                        params.display_menu = CreateState::Free;
+                                        params.tab_x = params.mouse_x;
+                                        params.tab_y = params.mouse_y;
                                     }
-                                } else {
-                                    params.display_menu = CreateState::Free;
-                                    params.tab_x = params.mouse_x;
-                                    params.tab_y = params.mouse_y;
+                                    1 => {
+                                        let index = params.selected_nodes[0];
+                                        params.display_menu = CreateState::After;
+                                        if let Some(node) = find_gui_node(
+                                            index,
+                                            &params.gui_nodes,
+                                        ) {
+                                            let b = node.borrow();
+                                            params.tab_x = b.x + 200.0;
+                                            params.tab_y = b.y;
+                                        }
+                                    }
+                                    _ => {}
                                 }
                             }
                             Input::Release(Button::Keyboard(Key::I)) => {
-                                if let Some(index) = params.selected_node {
-                                    params.display_menu = CreateState::Before;
-                                    if let Some(node) = find_gui_node(index, &params.gui_nodes) {
-                                        let b = node.borrow();
-                                        params.tab_x = b.x - 200.0;
-                                        params.tab_y = b.y;
+                                match params.selected_nodes.len() {
+                                    0 => {
+                                        params.display_menu = CreateState::Free;
+                                        params.tab_x = params.mouse_x;
+                                        params.tab_y = params.mouse_y;
                                     }
-                                } else {
-                                    params.display_menu = CreateState::Free;
-                                    params.tab_x = params.mouse_x;
-                                    params.tab_y = params.mouse_y;
+                                    1 => {
+                                        let index = params.selected_nodes[0];
+                                        params.display_menu = CreateState::Before;
+                                        if let Some(node) = find_gui_node(
+                                            index,
+                                            &params.gui_nodes,
+                                        ) {
+                                            let b = node.borrow();
+                                            params.tab_x = b.x - 200.0;
+                                            params.tab_y = b.y;
+                                        }
+                                    }
+                                    _ => {}
                                 }
                             }
                             Input::Release(Button::Keyboard(Key::S)) => {
-                                if let Some(index) = params.selected_node {
-                                    params.display_menu = CreateState::Substitute;
-                                    if let Some(node) = find_gui_node(index, &params.gui_nodes) {
-                                        let b = node.borrow();
-                                        params.tab_x = b.x;
-                                        params.tab_y = b.y;
+                                match params.selected_nodes.len() {
+                                    0 => {
+                                        params.display_menu = CreateState::Free;
+                                        params.tab_x = params.mouse_x;
+                                        params.tab_y = params.mouse_y;
                                     }
-                                } else {
-                                    params.display_menu = CreateState::Free;
-                                    params.tab_x = params.mouse_x;
-                                    params.tab_y = params.mouse_y;
+                                    1 => {
+                                        let index = params.selected_nodes[0];
+                                        params.display_menu = CreateState::Substitute;
+                                        if let Some(node) = find_gui_node(
+                                            index,
+                                            &params.gui_nodes,
+                                        ) {
+                                            let b = node.borrow();
+                                            params.tab_x = b.x;
+                                            params.tab_y = b.y;
+                                        }
+                                    }
+                                    _ => {}
                                 }
                             }
                             Input::Release(Button::Keyboard(Key::U)) => {
@@ -218,33 +244,45 @@ pub mod feature {
                                 }
                             }
                             Input::Release(Button::Keyboard(Key::H)) => {
-                                if let Some(selected_node) = params.selected_node {
-                                    if let Some(g_node) = params.gui_nodes.get(&selected_node) {
-                                        let gn = g_node.borrow();
-                                        if let Some(input_node_id) = find_input_node(gn.node_id, &params.connections) {
-                                            for (_key, g_node) in &params.gui_nodes {
-                                                let gnn = g_node.borrow();
-                                                if gnn.node_id == input_node_id {
-                                                    params.selected_node = Some(gnn.id);
+                                match params.selected_nodes.len() {
+                                    1 => {
+                                        let selected_node = params.selected_nodes[0];
+                                        if let Some(g_node) = params.gui_nodes.get(&selected_node) {
+                                            let gn = g_node.borrow();
+                                            if let Some(input_node_id) =
+                                                find_input_node(gn.node_id, &params.connections)
+                                            {
+                                                for (_key, g_node) in &params.gui_nodes {
+                                                    let gnn = g_node.borrow();
+                                                    if gnn.node_id == input_node_id {
+                                                        params.selected_nodes = vec![gnn.id];
+                                                    }
                                                 }
                                             }
                                         }
                                     }
+                                    _ => {}
                                 }
                             }
                             Input::Release(Button::Keyboard(Key::L)) => {
-                                if let Some(selected_node) = params.selected_node {
-                                    if let Some(g_node) = params.gui_nodes.get(&selected_node) {
-                                        let gn = g_node.borrow();
-                                        if let Some(input_node_id) = find_output_node(gn.node_id, &params.connections) {
-                                            for (_key, g_node) in &params.gui_nodes {
-                                                let gnn = g_node.borrow();
-                                                if gnn.node_id == input_node_id {
-                                                    params.selected_node = Some(gnn.id);
+                                match params.selected_nodes.len() {
+                                    1 => {
+                                        let selected_node = params.selected_nodes[0];
+                                        if let Some(g_node) = params.gui_nodes.get(&selected_node) {
+                                            let gn = g_node.borrow();
+                                            if let Some(input_node_id) =
+                                                find_output_node(gn.node_id, &params.connections)
+                                            {
+                                                for (_key, g_node) in &params.gui_nodes {
+                                                    let gnn = g_node.borrow();
+                                                    if gnn.node_id == input_node_id {
+                                                        params.selected_nodes = vec![gnn.id];
+                                                    }
                                                 }
                                             }
                                         }
                                     }
+                                    _ => {}
                                 }
                             }
                             Input::Text(text) => {
@@ -265,16 +303,17 @@ pub mod feature {
                             params.mouse_x = x as f64;
                             params.mouse_y = y as f64;
                         }
-                        _ => {
-                        }
+                        _ => {}
                     }
                 }
 
                 match event {
                     // Break from the loop upon `Escape`.
-                    glium::glutin::Event::KeyboardInput(_,
-                                                        _,
-                                                        Some(glium::glutin::VirtualKeyCode::Q)) |
+                    glium::glutin::Event::KeyboardInput(
+                        _,
+                        _,
+                        Some(glium::glutin::VirtualKeyCode::Q),
+                    ) |
                     glium::glutin::Event::Closed => {
                         if let Some(g_node) = params.last_node {
                             if let Some(node) = params.node_map.get(&g_node.borrow().node_id) {
@@ -308,12 +347,14 @@ pub mod feature {
         }
     }
 
-    fn draw_parameters(_gn: &Rc<RefCell<gui_node::GuiNodeData>>,
-                       node: &Rc<RefCell<Node>>,
-                       parent_id: conrod::widget::id::Id,
-                       param_ui: &NodeUI,
-                       ids: &mut conrod::widget::id::List,
-                       ui: &mut conrod::UiCell) {
+    fn draw_parameters(
+        _gn: &Rc<RefCell<gui_node::GuiNodeData>>,
+        node: &Rc<RefCell<Node>>,
+        parent_id: conrod::widget::id::Id,
+        param_ui: &NodeUI,
+        ids: &mut conrod::widget::id::List,
+        ui: &mut conrod::UiCell,
+    ) {
         use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};
 
         match param_ui {
@@ -331,13 +372,14 @@ pub mod feature {
 
                 if let NodeUIData::StringData(value) = nn.get_value(&data.field) {
                     for event in widget::TextBox::new(value.as_str())
-                            .parent(parent_id)
-                            .middle_of(parent_id)
-                            .color(color::WHITE)
-                            .w(200.0)
-                            .h(30.0)
-                            .left_justify()
-                            .set(id, ui) {
+                        .parent(parent_id)
+                        .middle_of(parent_id)
+                        .color(color::WHITE)
+                        .w(200.0)
+                        .h(30.0)
+                        .left_justify()
+                        .set(id, ui)
+                    {
 
                         match event {
                             widget::text_box::Event::Update(string) => {
@@ -352,52 +394,70 @@ pub mod feature {
 
     }
 
-    fn set_ui(ref mut ui: conrod::UiCell,
-              ids: &mut Ids,
-              params: &mut Params,
-              undo_stack: &mut UndoStack) {
+    fn set_ui(
+        ref mut ui: conrod::UiCell,
+        ids: &mut Ids,
+        params: &mut Params,
+        undo_stack: &mut UndoStack,
+    ) {
         use conrod::{color, widget, Colorable, Positionable, Sizeable, Widget};
         use conrod::position::{Position, Relative};
 
         widget::Canvas::new()
             .color(color::DARK_CHARCOAL)
-            .flow_right(&[(ids.node_panel, widget::Canvas::new().length(500.0).color(color::RED)),
-                          (ids.parameters_panel,
-                           widget::Canvas::new()
-                               .length(300.0)
-                               .rgb(91.0 / 256.0, 103.0 / 256.0, 107.0 / 256.0))])
+            .flow_right(
+                &[
+                    (
+                        ids.node_panel,
+                        widget::Canvas::new().length(500.0).color(color::RED),
+                    ),
+                    (
+                        ids.parameters_panel,
+                        widget::Canvas::new()
+                            .length(300.0)
+                            .rgb(91.0 / 256.0, 103.0 / 256.0, 107.0 / 256.0),
+                    ),
+                ],
+            )
             .set(ids.canvas, ui);
 
         for event in widgets::Background::new()
-                .parent(ids.node_panel)
-                .set(ids.node_background, ui) {
+            .parent(ids.node_panel)
+            .set(ids.node_background, ui)
+        {
             match event {
                 widgets::Event::Click => {
-                    params.selected_node = None;
+                    params.selected_nodes = vec![];
                 }
                 _ => {}
             }
         }
 
-        if let Some(id) = params.selected_node {
-            if let Some(g_node) = params.gui_nodes.get(&id) {
-                let mut gn = g_node.borrow_mut();
-                let node_id = gn.node_id;
-                if let Some(node) = params.node_map.get(&node_id) {
-                    let param_ui;
-                    {
-                        let bn = node.borrow();
-                        let nn = bn.deref();
-                        param_ui = nn.get_ui();
+        match params.selected_nodes.len() {
+            1 => {
+                let id = params.selected_nodes[0];
+                if let Some(g_node) = params.gui_nodes.get(&id) {
+                    let mut gn = g_node.borrow_mut();
+                    let node_id = gn.node_id;
+                    if let Some(node) = params.node_map.get(&node_id) {
+                        let param_ui;
+                        {
+                            let bn = node.borrow();
+                            let nn = bn.deref();
+                            param_ui = nn.get_ui();
+                        }
+                        draw_parameters(
+                            &g_node,
+                            &node,
+                            ids.parameters_panel,
+                            &param_ui,
+                            &mut gn.parameter_ids,
+                            ui,
+                        );
                     }
-                    draw_parameters(&g_node,
-                                    &node,
-                                    ids.parameters_panel,
-                                    &param_ui,
-                                    &mut gn.parameter_ids,
-                                    ui);
                 }
             }
+            _ => {}
         }
 
         if params.display_menu != CreateState::None {
@@ -406,16 +466,23 @@ pub mod feature {
                 .pad(5.0)
                 .w(200.0)
                 .h(30.0)
-                .x_position(Position::Relative(Relative::Scalar(params.tab_x), Some(ids.canvas)))
-                .y_position(Position::Relative(Relative::Scalar(params.tab_y), Some(ids.canvas)))
+                .x_position(Position::Relative(
+                    Relative::Scalar(params.tab_x),
+                    Some(ids.canvas),
+                ))
+                .y_position(Position::Relative(
+                    Relative::Scalar(params.tab_y),
+                    Some(ids.canvas),
+                ))
                 .set(ids.name_input_background, ui);
 
             for event in widget::TextBox::new(params.name_input.as_str())
-                    .parent(ids.name_input_background)
-                    .color(color::WHITE)
-                    .top_left_of(ids.name_input_background)
-                    .left_justify()
-                    .set(ids.text_edit, ui) {
+                .parent(ids.name_input_background)
+                .color(color::WHITE)
+                .top_left_of(ids.name_input_background)
+                .left_justify()
+                .set(ids.text_edit, ui)
+            {
 
                 match event {
                     widget::text_box::Event::Update(string) => params.name_input = string,
@@ -430,12 +497,13 @@ pub mod feature {
 
         if let CommandLine::Text(text) = params.command_line.clone() {
             for event in widget::TextBox::new(text.as_str())
-                    .parent(ids.node_panel)
-                    .color(color::WHITE)
-                    .h(30.0)
-                    .bottom_left_of(ids.node_panel)
-                    .left_justify()
-                    .set(ids.command_line, ui) {
+                .parent(ids.node_panel)
+                .color(color::WHITE)
+                .h(30.0)
+                .bottom_left_of(ids.node_panel)
+                .left_justify()
+                .set(ids.command_line, ui)
+            {
 
                 match event {
                     widget::text_box::Event::Update(string) => {
@@ -452,13 +520,14 @@ pub mod feature {
 
         fn in_box(mouse_xy: &conrod::position::Point, node_x: f64, node_y: f64) -> bool {
             return if mouse_xy[0] < (node_x - 400.0) || mouse_xy[0] > ((node_x - 400.0) + 140.0) {
-                       false
-                   } else if mouse_xy[1] > ((600.0 - node_y) - 300.0) ||
-                             mouse_xy[1] < (((600.0 - node_y) - 300.0) - 30.0) {
-                       false
-                   } else {
-                       true
-                   };
+                false
+            } else if mouse_xy[1] > ((600.0 - node_y) - 300.0) ||
+                       mouse_xy[1] < (((600.0 - node_y) - 300.0) - 30.0)
+            {
+                false
+            } else {
+                true
+            };
         }
 
         for (_, g_node) in params.gui_nodes.iter() {
@@ -469,15 +538,16 @@ pub mod feature {
                 id = node.id;
                 node_id = node.node_id;
             }
-            let selected = Some(id) == params.selected_node;
+            let selected = vec![id] == params.selected_nodes;
             for event in gui_node::GuiNode::new(g_node.clone(), selected)
-                    .parent(ids.canvas)
-                    .w(140.0)
-                    .h(30.0)
-                    .set(id, ui) {
+                .parent(ids.canvas)
+                .w(140.0)
+                .h(30.0)
+                .set(id, ui)
+            {
                 match event {
                     gui_node::Event::Click => {
-                        params.selected_node = Some(id);
+                        params.selected_nodes = vec![id];
                     }
                     gui_node::Event::ConnectOutput => {
                         let global = ui.global_input();
@@ -566,9 +636,10 @@ pub mod feature {
             None => {}
         }
 
-        fn find_node(id: i64,
-                     nodes: &HashMap<conrod::widget::id::Id, Rc<RefCell<gui_node::GuiNodeData>>>)
-                     -> Option<Rc<RefCell<gui_node::GuiNodeData>>> {
+        fn find_node(
+            id: i64,
+            nodes: &HashMap<conrod::widget::id::Id, Rc<RefCell<gui_node::GuiNodeData>>>,
+        ) -> Option<Rc<RefCell<gui_node::GuiNodeData>>> {
             for (_, node) in nodes.iter() {
                 let n = node.borrow();
                 if n.node_id == id {
@@ -578,26 +649,31 @@ pub mod feature {
             None
         }
 
-        fn calculate_point_path(start: conrod::position::Point,
-                                end: conrod::position::Point)
-                                -> Vec<conrod::position::Point> {
+        fn calculate_point_path(
+            start: conrod::position::Point,
+            end: conrod::position::Point,
+        ) -> Vec<conrod::position::Point> {
             if end[0] >= start[0] + 40.0 {
                 let x_halfway = (start[0] + end[0]) / 2.0;
                 vec![start, [x_halfway, start[1]], [x_halfway, end[1]], end]
             } else {
                 let y_halfway = (start[1] + end[1]) / 2.0;
-                vec![start,
-                     [start[0] + 20.0, start[1]],
-                     [start[0] + 20.0, y_halfway],
-                     [end[0] - 20.0, y_halfway],
-                     [end[0] - 20.0, end[1]],
-                     end]
+                vec![
+                    start,
+                    [start[0] + 20.0, start[1]],
+                    [start[0] + 20.0, y_halfway],
+                    [end[0] - 20.0, y_halfway],
+                    [end[0] - 20.0, end[1]],
+                    end,
+                ]
             }
         }
 
         for (_key, connection) in &params.connections {
-            match (find_node(connection.from, &params.gui_nodes),
-                   find_node(connection.to, &params.gui_nodes)) {
+            match (
+                find_node(connection.from, &params.gui_nodes),
+                find_node(connection.to, &params.gui_nodes),
+            ) {
                 (Some(a), Some(b)) => {
                     let an = a.borrow();
                     let bn = b.borrow();
@@ -639,26 +715,27 @@ pub mod feature {
         None
     }
 
-    fn create_node(mut params: &mut Params,
-                   mut undo_stack: &mut UndoStack,
-                   mut generator: conrod::widget::id::Generator)
-                   -> () {
+    fn create_node(
+        mut params: &mut Params,
+        mut undo_stack: &mut UndoStack,
+        mut generator: conrod::widget::id::Generator,
+    ) -> () {
         let new_node_id = params.node_id + 1;
         params.node_id = params.node_id + 1;
         let maybe_node = build::build(new_node_id, params.name_input.clone());
         if let Some(node) = maybe_node {
             let id = generator.next();
             let g_node = Rc::new(RefCell::new(gui_node::GuiNodeData {
-                                                  id: id,
-                                                  parameter_ids: conrod::widget::id::List::new(),
-                                                  node_id: new_node_id,
-                                                  label: params.name_input.clone(),
-                                                  x: params.tab_x,
-                                                  y: params.tab_y,
-                                                  origin_x: params.tab_x,
-                                                  origin_y: params.tab_y,
-                                                  mode: gui_node::Mode::None,
-                                              }));
+                id: id,
+                parameter_ids: conrod::widget::id::List::new(),
+                node_id: new_node_id,
+                label: params.name_input.clone(),
+                x: params.tab_x,
+                y: params.tab_y,
+                origin_x: params.tab_x,
+                origin_y: params.tab_y,
+                mode: gui_node::Mode::None,
+            }));
 
             let g_node_deref = g_node.borrow();
 
@@ -668,52 +745,73 @@ pub mod feature {
 
             commands.push(command);
 
-            if let Some(index) = params.selected_node {
-                if let Some(g_node) = find_gui_node(index, &params.gui_nodes) {
-                    let b = g_node.borrow();
-                    let connection_id = generator.next();
+            match params.selected_nodes.len() {
+                1 => {
+                    let index = params.selected_nodes[0];
+                    if let Some(g_node) = find_gui_node(index, &params.gui_nodes) {
+                        let b = g_node.borrow();
+                        let connection_id = generator.next();
 
-                    match params.display_menu {
-                        CreateState::Before => {
-                            if let Some(connected) = find_input_node(b.node_id,
-                                                                     &params.connections) {
-                                commands.push(CreateConnectionCommand::new_ref(generator.next(),
-                                                                               connected,
-                                                                               new_node_id));
+                        match params.display_menu {
+                            CreateState::Before => {
+                                if let Some(connected) = find_input_node(
+                                    b.node_id,
+                                    &params.connections,
+                                ) {
+                                    commands.push(CreateConnectionCommand::new_ref(
+                                        generator.next(),
+                                        connected,
+                                        new_node_id,
+                                    ));
 
-                                commands.push(DisconnectCommand::new_ref(connected, b.node_id));
-                            }
-
-                            commands.push(CreateConnectionCommand::new_ref(connection_id,
-                                                                           new_node_id,
-                                                                           b.node_id));
-                        }
-                        CreateState::After => {
-                            let command = CreateConnectionCommand::new_ref(connection_id,
-                                                                           b.node_id,
-                                                                           new_node_id);
-                            commands.push(command);
-                        }
-                        CreateState::Substitute => {
-                            let input_node =find_input_node(b.node_id, &params.connections);
-                            let output_node =find_output_node(b.node_id, &params.connections);
-                            let node = params.node_map.get(&b.node_id);
-                            match (node, input_node, output_node) {
-                                (Some(nn), Some(inode), Some(onode)) => {
-                                    commands.push(DisconnectCommand::new_ref(inode, b.node_id));
-                                    commands.push(DisconnectCommand::new_ref(b.node_id, onode));
-                                    commands.push(CreateConnectionCommand::new_ref(generator.next(), inode, new_node_id));
-                                    commands.push(CreateConnectionCommand::new_ref(generator.next(), new_node_id, onode));
-                                    commands.push(DeleteNodeCommand::new_ref(nn.clone(), g_node.clone()));
+                                    commands.push(DisconnectCommand::new_ref(connected, b.node_id));
                                 }
-                                _ => {
+
+                                commands.push(CreateConnectionCommand::new_ref(
+                                    connection_id,
+                                    new_node_id,
+                                    b.node_id,
+                                ));
+                            }
+                            CreateState::After => {
+                                let command = CreateConnectionCommand::new_ref(
+                                    connection_id,
+                                    b.node_id,
+                                    new_node_id,
+                                );
+                                commands.push(command);
+                            }
+                            CreateState::Substitute => {
+                                let input_node = find_input_node(b.node_id, &params.connections);
+                                let output_node = find_output_node(b.node_id, &params.connections);
+                                let node = params.node_map.get(&b.node_id);
+                                match (node, input_node, output_node) {
+                                    (Some(nn), Some(inode), Some(onode)) => {
+                                        commands.push(DisconnectCommand::new_ref(inode, b.node_id));
+                                        commands.push(DisconnectCommand::new_ref(b.node_id, onode));
+                                        commands.push(CreateConnectionCommand::new_ref(
+                                            generator.next(),
+                                            inode,
+                                            new_node_id,
+                                        ));
+                                        commands.push(CreateConnectionCommand::new_ref(
+                                            generator.next(),
+                                            new_node_id,
+                                            onode,
+                                        ));
+                                        commands.push(
+                                            DeleteNodeCommand::new_ref(nn.clone(), g_node.clone()),
+                                        );
+                                    }
+                                    _ => {}
                                 }
                             }
+                            CreateState::None => {}
+                            CreateState::Free => {}
                         }
-                        CreateState::None => {}
-                        CreateState::Free => {}
                     }
                 }
+                _ => {}
             }
 
             let command_group = CommandGroup::new_ref(commands);
@@ -722,7 +820,7 @@ pub mod feature {
             com.execute(&mut params);
             undo_stack.push(command_group.clone());
 
-            params.selected_node = Some(g_node_deref.id);
+            params.selected_nodes = vec![g_node_deref.id];
         }
     }
 
