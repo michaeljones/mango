@@ -19,6 +19,9 @@ pub trait Command {
     fn is_undoable(&self) -> bool { true }
 }
 
+
+// CreateNodeCommand
+//
 pub struct CreateNodeCommand {
     node: NodeRef,
     g_node: gui_node::GuiNodeDataRef,
@@ -60,6 +63,48 @@ impl Command for CreateNodeCommand {
         params.gui_nodes.remove(&g_node.id);
 
         params.last_node = self.previous_last_node.clone();
+    }
+}
+
+// DeleteNodeCommand
+//
+pub struct DeleteNodeCommand {
+    node: NodeRef,
+    g_node: gui_node::GuiNodeDataRef,
+    previous_last_node: Option<Rc<RefCell<gui_node::GuiNodeData>>>,
+}
+
+impl DeleteNodeCommand {
+    pub fn new(node: NodeRef, g_node: gui_node::GuiNodeDataRef) -> Self {
+        DeleteNodeCommand {
+            node: node,
+            g_node: g_node,
+            previous_last_node: None,
+        }
+    }
+
+    pub fn new_ref(node: NodeRef, g_node: gui_node::GuiNodeDataRef) -> Rc<RefCell<Self>> {
+        Rc::new(RefCell::new(DeleteNodeCommand::new(node, g_node)))
+    }
+}
+
+impl Command for DeleteNodeCommand {
+    fn execute(&mut self, params: &mut Params) {
+        self.redo(params);
+    }
+
+    fn redo(&mut self, params: &mut Params) {
+        let node = self.node.borrow();
+        let g_node = self.g_node.borrow();
+        params.node_map.remove(&node.id());
+        params.gui_nodes.remove(&g_node.id);
+    }
+
+    fn undo(&mut self, params: &mut Params) {
+        let node = self.node.borrow();
+        let g_node = self.g_node.borrow();
+        params.node_map.insert(node.id(), self.node.clone());
+        params.gui_nodes.insert(g_node.id, self.g_node.clone());
     }
 }
 

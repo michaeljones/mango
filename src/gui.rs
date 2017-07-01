@@ -9,8 +9,8 @@ pub mod feature {
 
     use gui_node;
     use build;
-    use commands::{CreateNodeCommand, CreateConnectionCommand, DisconnectCommand, Command,
-                   CommandGroup, UndoStack};
+    use commands::{CreateNodeCommand, CreateConnectionCommand, DisconnectCommand, DeleteNodeCommand,
+    Command,CommandGroup, UndoStack};
     use params::{Params, CreateState, CommandLine};
     use Node;
     use NodeUI;
@@ -669,8 +669,8 @@ pub mod feature {
             commands.push(command);
 
             if let Some(index) = params.selected_node {
-                if let Some(node) = find_gui_node(index, &params.gui_nodes) {
-                    let b = node.borrow();
+                if let Some(g_node) = find_gui_node(index, &params.gui_nodes) {
+                    let b = g_node.borrow();
                     let connection_id = generator.next();
 
                     match params.display_menu {
@@ -697,12 +697,14 @@ pub mod feature {
                         CreateState::Substitute => {
                             let input_node =find_input_node(b.node_id, &params.connections);
                             let output_node =find_output_node(b.node_id, &params.connections);
-                            match (input_node, output_node) {
-                                (Some(inode), Some(onode)) => {
+                            let node = params.node_map.get(&b.node_id);
+                            match (node, input_node, output_node) {
+                                (Some(nn), Some(inode), Some(onode)) => {
                                     commands.push(DisconnectCommand::new_ref(inode, b.node_id));
                                     commands.push(DisconnectCommand::new_ref(b.node_id, onode));
                                     commands.push(CreateConnectionCommand::new_ref(generator.next(), inode, new_node_id));
                                     commands.push(CreateConnectionCommand::new_ref(generator.next(), new_node_id, onode));
+                                    commands.push(DeleteNodeCommand::new_ref(nn.clone(), g_node.clone()));
                                 }
                                 _ => {
                                 }
