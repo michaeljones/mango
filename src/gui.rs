@@ -11,7 +11,7 @@ pub mod feature {
     use build;
     use commands::{CreateNodeCommand, CreateConnectionCommand, DisconnectCommand,
                    DeleteNodeCommand, Command, CommandGroup, UndoStack};
-    use params::{Params, CreateState, CommandLine};
+    use params::{Params, CreateState, CommandLine, InteractionMode};
     use Node;
     use NodeUI;
     use NodeUIData;
@@ -113,6 +113,7 @@ pub mod feature {
             connections: HashMap::new(),
             selected_nodes: vec![],
             command_line: CommandLine::None,
+            interaction_mode: InteractionMode::Normal,
         };
 
         let mut undo_stack = UndoStack::new();
@@ -167,6 +168,12 @@ pub mod feature {
                         }
                     } else {
                         match event.clone() {
+                            Input::Release(Button::Keyboard(Key::V)) => {
+                                params.interaction_mode = InteractionMode::Visual;
+                            }
+                            Input::Release(Button::Keyboard(Key::Escape)) => {
+                                params.interaction_mode = InteractionMode::Normal;
+                            }
                             Input::Release(Button::Keyboard(Key::A)) => {
                                 match params.selected_nodes.len() {
                                     0 => {

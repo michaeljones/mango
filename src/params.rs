@@ -7,7 +7,7 @@ use conrod;
 
 use gui_node;
 use Node;
-use gui::feature::Connection;
+use gui::Connection;
 
 #[derive(PartialEq)]
 pub enum CreateState {
@@ -23,6 +23,12 @@ pub enum CreateState {
 pub enum CommandLine {
     None,
     Text(String),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum InteractionMode {
+    Normal,
+    Visual,
 }
 
 pub struct Params {
@@ -41,4 +47,5 @@ pub struct Params {
     pub connections: HashMap<(i64, i64), Connection>,
     pub selected_nodes: Vec<conrod::widget::id::Id>,
     pub command_line: CommandLine,
+    pub interaction_mode: InteractionMode,
 }
