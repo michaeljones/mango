@@ -22,16 +22,16 @@ impl Node for Lines {
                 let content = input.borrow_mut().pull();
 
                 return match content {
-                           FlowData::String(text) => {
-                               let mut output = vec![];
-                               for i in text.lines() {
-                                   output.push(i.to_string());
-                               }
-                               return FlowData::StringArray(output);
-                           }
-                           FlowData::Error(string) => FlowData::Error(string),
-                           _ => FlowData::Error("Unknown data".to_string()),
-                       };
+                    FlowData::String(text) => {
+                        let mut output = vec![];
+                        for i in text.lines() {
+                            output.push(i.to_string());
+                        }
+                        return FlowData::StringArray(output);
+                    }
+                    FlowData::Error(string) => FlowData::Error(string),
+                    _ => FlowData::Error("Unknown data".to_string()),
+                };
             }
         }
     }

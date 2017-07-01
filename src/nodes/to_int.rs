@@ -23,19 +23,19 @@ impl Node for ToInt {
                 let content = input.borrow_mut().pull();
 
                 return match content {
-                           FlowData::StringArray(lines) => {
-                               let mut output = vec![];
-                               for line in &lines {
-                                   match line.parse::<i64>() {
-                                       Ok(int) => output.push(int),
-                                       Err(_e) => (),
-                                   }
-                               }
-                               return FlowData::IntArray(output);
-                           }
-                           FlowData::Error(string) => FlowData::Error(string),
-                           _ => FlowData::Error("Unknown data".to_string()),
-                       };
+                    FlowData::StringArray(lines) => {
+                        let mut output = vec![];
+                        for line in &lines {
+                            match line.parse::<i64>() {
+                                Ok(int) => output.push(int),
+                                Err(_e) => (),
+                            }
+                        }
+                        return FlowData::IntArray(output);
+                    }
+                    FlowData::Error(string) => FlowData::Error(string),
+                    _ => FlowData::Error("Unknown data".to_string()),
+                };
             }
         }
     }

@@ -15,15 +15,12 @@ use params::Params;
 
 
 struct SaveCommand {
-    components: Vec<String>
+    components: Vec<String>,
 }
 
 impl SaveCommand {
-
     pub fn new(components: &Vec<String>) -> Self {
-        SaveCommand {
-            components: components.clone(),
-        }
+        SaveCommand { components: components.clone() }
     }
 
     pub fn new_ref(components: &Vec<String>) -> Rc<RefCell<Self>> {
@@ -32,8 +29,9 @@ impl SaveCommand {
 }
 
 impl Command for SaveCommand {
-
-    fn is_undoable(&self) -> bool { false }
+    fn is_undoable(&self) -> bool {
+        false
+    }
 
     fn execute(&mut self, params: &mut Params) {
 
@@ -49,8 +47,10 @@ impl Command for SaveCommand {
                 let spec = n.get_spec();
                 let mut hash = BTreeMap::new();
                 hash.insert(Yaml::String(String::from("id")), Yaml::Integer(spec.id));
-                hash.insert(Yaml::String(String::from("type")),
-                            Yaml::String(String::from(spec.type_)));
+                hash.insert(
+                    Yaml::String(String::from("type")),
+                    Yaml::String(String::from(spec.type_)),
+                );
                 for entry in spec.attributes {
                     match entry {
                         SpecAttribute::String(name, value) => {
@@ -72,12 +72,16 @@ impl Command for SaveCommand {
             .map(|connection| {
 
                 let mut from_hash = BTreeMap::new();
-                from_hash.insert(Yaml::String(String::from("node")),
-                                 Yaml::Integer(connection.from));
+                from_hash.insert(
+                    Yaml::String(String::from("node")),
+                    Yaml::Integer(connection.from),
+                );
 
                 let mut to_hash = BTreeMap::new();
-                to_hash.insert(Yaml::String(String::from("node")),
-                               Yaml::Integer(connection.to));
+                to_hash.insert(
+                    Yaml::String(String::from("node")),
+                    Yaml::Integer(connection.to),
+                );
 
                 let mut hash = BTreeMap::new();
                 hash.insert(Yaml::String(String::from("from")), Yaml::Hash(from_hash));
@@ -89,8 +93,10 @@ impl Command for SaveCommand {
         let mut doc_hash = BTreeMap::new();
 
         doc_hash.insert(Yaml::String(String::from("nodes")), Yaml::Array(nodes));
-        doc_hash.insert(Yaml::String(String::from("connections")),
-                        Yaml::Array(connections));
+        doc_hash.insert(
+            Yaml::String(String::from("connections")),
+            Yaml::Array(connections),
+        );
 
         let mut buffer = String::new();
         {
@@ -102,17 +108,17 @@ impl Command for SaveCommand {
         file.write_all(buffer.as_bytes());
     }
 
-    fn redo(&mut self, params: &mut Params) {
-    }
+    fn redo(&mut self, params: &mut Params) {}
 
-    fn undo(&mut self, params: &mut Params) {
-    }
+    fn undo(&mut self, params: &mut Params) {}
 }
 
 
 pub fn run(text: &String, params: &mut Params, undo_stack: &mut UndoStack) -> bool {
 
-    let components: Vec<String> = text.split_whitespace().map(|str| String::from(str)).collect();
+    let components: Vec<String> = text.split_whitespace()
+        .map(|str| String::from(str))
+        .collect();
     if components.len() > 1 {
         let mut command = None;
         if components[0] == "w" {

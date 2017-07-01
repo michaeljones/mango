@@ -23,12 +23,12 @@ impl Node for Sum {
                 let content = input.borrow_mut().pull();
 
                 return match content {
-                           FlowData::IntArray(ints) => {
-                               return FlowData::Int(ints.iter().sum());
-                           }
-                           FlowData::Error(string) => FlowData::Error(string),
-                           _ => FlowData::Error("Unknown data".to_string()),
-                       };
+                    FlowData::IntArray(ints) => {
+                        return FlowData::Int(ints.iter().sum());
+                    }
+                    FlowData::Error(string) => FlowData::Error(string),
+                    _ => FlowData::Error("Unknown data".to_string()),
+                };
             }
         }
     }

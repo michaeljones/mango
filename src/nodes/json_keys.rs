@@ -22,16 +22,16 @@ impl Node for JsonKeys {
                 let content = input.borrow_mut().pull();
 
                 return match content {
-                           FlowData::Json(data) => {
-                               let mut keys = vec![];
-                               for (key, _value) in data.entries() {
-                                   keys.push(key.to_string());
-                               }
-                               return FlowData::StringArray(keys);
-                           }
-                           FlowData::Error(string) => FlowData::Error(string),
-                           _ => FlowData::Error("Unknown data".to_string()),
-                       };
+                    FlowData::Json(data) => {
+                        let mut keys = vec![];
+                        for (key, _value) in data.entries() {
+                            keys.push(key.to_string());
+                        }
+                        return FlowData::StringArray(keys);
+                    }
+                    FlowData::Error(string) => FlowData::Error(string),
+                    _ => FlowData::Error("Unknown data".to_string()),
+                };
             }
         }
     }

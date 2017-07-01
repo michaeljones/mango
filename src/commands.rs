@@ -16,7 +16,9 @@ pub trait Command {
     fn redo(&mut self, params: &mut Params);
     fn undo(&mut self, params: &mut Params);
 
-    fn is_undoable(&self) -> bool { true }
+    fn is_undoable(&self) -> bool {
+        true
+    }
 }
 
 
@@ -138,14 +140,14 @@ impl Command for CreateConnectionCommand {
     fn redo(&mut self, mut params: &mut Params) {
         build::connect(self.from, None, self.to, Some(1), &params.node_map);
 
-        params
-            .connections
-            .insert((self.from, self.to),
-                    Connection {
-                        id: self.id,
-                        from: self.from,
-                        to: self.to,
-                    });
+        params.connections.insert(
+            (self.from, self.to),
+            Connection {
+                id: self.id,
+                from: self.from,
+                to: self.to,
+            },
+        );
     }
 
     fn undo(&mut self, params: &mut Params) {
@@ -192,14 +194,14 @@ impl Command for DisconnectCommand {
         if let Some(ref conn) = self.connection {
             // I can't figure out how to clone the old connection so I have to create a new one
             // with the same data to insert into the map
-            params
-                .connections
-                .insert((self.from, self.to),
-                        Connection {
-                            id: conn.id,
-                            from: self.from,
-                            to: self.to,
-                        });
+            params.connections.insert(
+                (self.from, self.to),
+                Connection {
+                    id: conn.id,
+                    from: self.from,
+                    to: self.to,
+                },
+            );
         }
     }
 }

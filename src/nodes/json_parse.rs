@@ -24,15 +24,15 @@ impl Node for JsonParse {
                 let content = input.borrow_mut().pull();
 
                 return match content {
-                           FlowData::String(text) => {
-                               match json::parse(&text) {
-                                   Ok(data) => FlowData::Json(data),
-                                   Err(_e) => FlowData::Error("Failed to parse json".to_string()),
-                               }
-                           }
-                           FlowData::Error(string) => FlowData::Error(string),
-                           _ => FlowData::Error("Unknown data".to_string()),
-                       };
+                    FlowData::String(text) => {
+                        match json::parse(&text) {
+                            Ok(data) => FlowData::Json(data),
+                            Err(_e) => FlowData::Error("Failed to parse json".to_string()),
+                        }
+                    }
+                    FlowData::Error(string) => FlowData::Error(string),
+                    _ => FlowData::Error("Unknown data".to_string()),
+                };
             }
         }
     }

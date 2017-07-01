@@ -25,10 +25,10 @@ impl Node for JsonStringify {
                 let content = input.borrow_mut().pull();
 
                 return match content {
-                           FlowData::Json(data) => FlowData::String(json::stringify(data)),
-                           FlowData::Error(string) => FlowData::Error(string),
-                           _ => FlowData::Error("Unknown data".to_string()),
-                       };
+                    FlowData::Json(data) => FlowData::String(json::stringify(data)),
+                    FlowData::Error(string) => FlowData::Error(string),
+                    _ => FlowData::Error("Unknown data".to_string()),
+                };
             }
         }
     }
