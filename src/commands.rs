@@ -4,7 +4,7 @@ use std::cell::RefCell;
 
 use conrod;
 
-use gui::feature::Connection;
+use gui::Connection;
 use params::Params;
 use build;
 use NodeRef;
