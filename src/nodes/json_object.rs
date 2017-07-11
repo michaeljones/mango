@@ -29,15 +29,15 @@ impl Node for JsonObject {
                 println!("{:?}", values_content);
 
                 return match (keys_content, values_content) {
-                           (FlowData::StringArray(keys), FlowData::StringArray(values)) => {
-                               let mut object = json::object::Object::new();
-                               for (key, value) in keys.iter().zip(values.iter()) {
-                                   object.insert(key, json::JsonValue::String(value.to_string()));
-                               }
-                               return FlowData::Json(json::JsonValue::Object(object));
-                           }
-                           _ => FlowData::Error("Incorrect inputs".to_string()),
-                       };
+                    (FlowData::StringArray(keys), FlowData::StringArray(values)) => {
+                        let mut object = json::object::Object::new();
+                        for (key, value) in keys.iter().zip(values.iter()) {
+                            object.insert(key, json::JsonValue::String(value.to_string()));
+                        }
+                        return FlowData::Json(json::JsonValue::Object(object));
+                    }
+                    _ => FlowData::Error("Incorrect inputs".to_string()),
+                };
             }
             _ => FlowData::Error("Insufficient inputs".to_string()),
         }

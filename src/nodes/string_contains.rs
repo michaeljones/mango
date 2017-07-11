@@ -27,18 +27,18 @@ impl Node for StringContains {
                 let content = input.borrow_mut().pull();
 
                 return match content {
-                           FlowData::StringArray(lines) => {
-                               let mut output = vec![];
-                               for i in &lines {
-                                   if i.contains(self.value.as_str()) {
-                                       output.push(i.to_string());
-                                   }
-                               }
-                               return FlowData::StringArray(output);
-                           }
-                           FlowData::Error(string) => FlowData::Error(string),
-                           _ => FlowData::Error("Unknown data".to_string()),
-                       };
+                    FlowData::StringArray(lines) => {
+                        let mut output = vec![];
+                        for i in &lines {
+                            if i.contains(self.value.as_str()) {
+                                output.push(i.to_string());
+                            }
+                        }
+                        return FlowData::StringArray(output);
+                    }
+                    FlowData::Error(string) => FlowData::Error(string),
+                    _ => FlowData::Error("Unknown data".to_string()),
+                };
             }
         }
     }
@@ -49,9 +49,9 @@ impl Node for StringContains {
 
     fn get_ui(&self) -> NodeUI {
         NodeUI::StringField(StringFieldData {
-                                label: String::from("Value"),
-                                field: String::from("value"),
-                            })
+            label: String::from("Value"),
+            field: String::from("value"),
+        })
     }
 
     fn get_value(&self, field: &String) -> NodeUIData {
@@ -74,7 +74,9 @@ impl Node for StringContains {
         Spec {
             id: self.id,
             type_: String::from("string-contains"),
-            attributes: vec![SpecAttribute::String(String::from("value"), self.value.clone())],
+            attributes: vec![
+                SpecAttribute::String(String::from("value"), self.value.clone()),
+            ],
         }
     }
 }

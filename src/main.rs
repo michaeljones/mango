@@ -79,5 +79,5 @@ pub trait Node {
 type NodeRef = Rc<RefCell<Node>>;
 
 fn main() {
-    gui::feature::gui();
+    gui::gui();
 }

@@ -4,7 +4,7 @@ use std::cell::RefCell;
 
 use conrod;
 
-use gui::feature::Connection;
+use gui::Connection;
 use params::Params;
 use build;
 use NodeRef;
@@ -16,9 +16,14 @@ pub trait Command {
     fn redo(&mut self, params: &mut Params);
     fn undo(&mut self, params: &mut Params);
 
-    fn is_undoable(&self) -> bool { true }
+    fn is_undoable(&self) -> bool {
+        true
+    }
 }
 
+
+// CreateNodeCommand
+//
 pub struct CreateNodeCommand {
     node: NodeRef,
     g_node: gui_node::GuiNodeDataRef,
@@ -63,6 +68,48 @@ impl Command for CreateNodeCommand {
     }
 }
 
+// DeleteNodeCommand
+//
+pub struct DeleteNodeCommand {
+    node: NodeRef,
+    g_node: gui_node::GuiNodeDataRef,
+    previous_last_node: Option<Rc<RefCell<gui_node::GuiNodeData>>>,
+}
+
+impl DeleteNodeCommand {
+    pub fn new(node: NodeRef, g_node: gui_node::GuiNodeDataRef) -> Self {
+        DeleteNodeCommand {
+            node: node,
+            g_node: g_node,
+            previous_last_node: None,
+        }
+    }
+
+    pub fn new_ref(node: NodeRef, g_node: gui_node::GuiNodeDataRef) -> Rc<RefCell<Self>> {
+        Rc::new(RefCell::new(DeleteNodeCommand::new(node, g_node)))
+    }
+}
+
+impl Command for DeleteNodeCommand {
+    fn execute(&mut self, params: &mut Params) {
+        self.redo(params);
+    }
+
+    fn redo(&mut self, params: &mut Params) {
+        let node = self.node.borrow();
+        let g_node = self.g_node.borrow();
+        params.node_map.remove(&node.id());
+        params.gui_nodes.remove(&g_node.id);
+    }
+
+    fn undo(&mut self, params: &mut Params) {
+        let node = self.node.borrow();
+        let g_node = self.g_node.borrow();
+        params.node_map.insert(node.id(), self.node.clone());
+        params.gui_nodes.insert(g_node.id, self.g_node.clone());
+    }
+}
+
 // CreateConnectionCommand
 //
 pub struct CreateConnectionCommand {
@@ -93,14 +140,14 @@ impl Command for CreateConnectionCommand {
     fn redo(&mut self, mut params: &mut Params) {
         build::connect(self.from, None, self.to, Some(1), &params.node_map);
 
-        params
-            .connections
-            .insert((self.from, self.to),
-                    Connection {
-                        id: self.id,
-                        from: self.from,
-                        to: self.to,
-                    });
+        params.connections.insert(
+            (self.from, self.to),
+            Connection {
+                id: self.id,
+                from: self.from,
+                to: self.to,
+            },
+        );
     }
 
     fn undo(&mut self, params: &mut Params) {
@@ -147,14 +194,14 @@ impl Command for DisconnectCommand {
         if let Some(ref conn) = self.connection {
             // I can't figure out how to clone the old connection so I have to create a new one
             // with the same data to insert into the map
-            params
-                .connections
-                .insert((self.from, self.to),
-                        Connection {
-                            id: conn.id,
-                            from: self.from,
-                            to: self.to,
-                        });
+            params.connections.insert(
+                (self.from, self.to),
+                Connection {
+                    id: conn.id,
+                    from: self.from,
+                    to: self.to,
+                },
+            );
         }
     }
 }
