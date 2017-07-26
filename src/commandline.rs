@@ -20,7 +20,9 @@ struct SaveCommand {
 
 impl SaveCommand {
     pub fn new(components: &Vec<String>) -> Self {
-        SaveCommand { components: components.clone() }
+        SaveCommand {
+            components: components.clone(),
+        }
     }
 
     pub fn new_ref(components: &Vec<String>) -> Rc<RefCell<Self>> {

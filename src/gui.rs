@@ -395,20 +395,18 @@ fn set_ui(
 
     widget::Canvas::new()
         .color(color::DARK_CHARCOAL)
-        .flow_right(
-            &[
-                (
-                    ids.node_panel,
-                    widget::Canvas::new().length(500.0).color(color::RED),
-                ),
-                (
-                    ids.parameters_panel,
-                    widget::Canvas::new()
-                        .length(300.0)
-                        .rgb(91.0 / 256.0, 103.0 / 256.0, 107.0 / 256.0),
-                ),
-            ],
-        )
+        .flow_right(&[
+            (
+                ids.node_panel,
+                widget::Canvas::new().length(500.0).color(color::RED),
+            ),
+            (
+                ids.parameters_panel,
+                widget::Canvas::new()
+                    .length(300.0)
+                    .rgb(91.0 / 256.0, 103.0 / 256.0, 107.0 / 256.0),
+            ),
+        ])
         .set(ids.canvas, ui);
 
     for event in widgets::Background::new()
@@ -744,10 +742,9 @@ fn create_node(
 
                     match params.display_menu {
                         CreateState::Before => {
-                            if let Some(connected) = find_input_node(
-                                b.node_id,
-                                &params.connections,
-                            ) {
+                            if let Some(connected) =
+                                find_input_node(b.node_id, &params.connections)
+                            {
                                 commands.push(CreateConnectionCommand::new_ref(
                                     generator.next(),
                                     connected,
