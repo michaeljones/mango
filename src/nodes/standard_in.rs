@@ -6,6 +6,8 @@ use std;
 
 use Spec;
 use Node;
+use NodeRef;
+use NodeBuilder;
 use FlowData;
 
 pub struct StandardIn {
@@ -43,5 +45,19 @@ impl Node for StandardIn {
             type_: String::from("standard-in"),
             attributes: vec![],
         }
+    }
+}
+
+pub struct StandardInBuilder {}
+
+impl NodeBuilder for StandardInBuilder {
+    fn build(&self, id: i64, name: &str) -> Option<NodeRef> {
+        if name == "standard-in" {
+            return Some(Rc::new(RefCell::new(StandardIn {
+                id: id,
+                cache: None,
+            })));
+        }
+        None
     }
 }
