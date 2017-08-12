@@ -19,7 +19,6 @@ use std::ops::Deref;
 use conrod;
 use conrod::backend::glium::glium;
 use conrod::backend::glium::glium::{DisplayBuild, Surface};
-use conrod::graph::Walker;
 use std;
 
 #[derive(Debug)]
@@ -486,25 +485,11 @@ fn set_ui(
         }
     }
 
-    fn in_box(mouse_xy: &conrod::position::Point, node_x: f64, node_y: f64) -> bool {
-        return if mouse_xy[0] < (node_x - 400.0) || mouse_xy[0] > ((node_x - 400.0) + 140.0) {
-            false
-        } else if mouse_xy[1] > ((600.0 - node_y) - 300.0) ||
-                   mouse_xy[1] < (((600.0 - node_y) - 300.0) - 30.0)
-        {
-            false
-        } else {
-            true
-        };
-    }
-
     for (_, g_node) in params.gui_nodes.iter() {
         let id;
-        let node_id;
         {
             let node = g_node.borrow();
             id = node.id;
-            node_id = node.node_id;
         }
         let selected = vec![id] == params.selected_nodes;
         for event in gui_node::GuiNode::new(g_node.clone(), selected)

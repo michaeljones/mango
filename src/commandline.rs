@@ -1,7 +1,6 @@
 
 use std::collections::BTreeMap;
 use std::fs::File;
-use std::io::prelude::*;
 use std::io::Write;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -103,16 +102,22 @@ impl Command for SaveCommand {
         let mut buffer = String::new();
         {
             let mut emitter = YamlEmitter::new(&mut buffer);
-            emitter.dump(&Yaml::Hash(doc_hash));
+            match emitter.dump(&Yaml::Hash(doc_hash)) {
+                Ok(_) => {}
+                Err(error) => println!("Failed to convert to yaml: {:?}", error),
+            }
         }
 
         let mut file = File::create(self.components[1].clone()).unwrap();
-        file.write_all(buffer.as_bytes());
+        match file.write_all(buffer.as_bytes()) {
+            Ok(_) => {}
+            Err(error) => println!("Failed to write file: {:?}", error),
+        }
     }
 
-    fn redo(&mut self, params: &mut Params) {}
+    fn redo(&mut self, _params: &mut Params) {}
 
-    fn undo(&mut self, params: &mut Params) {}
+    fn undo(&mut self, _params: &mut Params) {}
 }
 
 

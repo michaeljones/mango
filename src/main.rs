@@ -161,7 +161,6 @@ fn main() {
 
             let yaml_connections = docs[0]["connections"].as_vec();
 
-            let mut end_node_id = 1;
             let mut node_connections = vec![];
 
             match yaml_connections {
