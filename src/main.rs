@@ -12,6 +12,11 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::fs::File;
 use std::io::Read;
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::ops::DerefMut;
+
+use params::{Params, CreateState, CommandLine, InteractionMode};
 
 mod nodes;
 mod gui;
@@ -108,14 +113,35 @@ fn build(entry: &Yaml) -> Option<NodeRef> {
 
 fn main() {
 
+    let mut params = Params {
+        node_id: 0,
+        display_menu: CreateState::None,
+        mouse_x: 0.0,
+        mouse_y: 0.0,
+        tab_x: 0.0,
+        tab_y: 0.0,
+        name_input: String::new(),
+        gui_nodes: HashMap::new(),
+        last_node: None,
+        connect_node: None,
+        node_map: HashMap::new(),
+        current_connection: None,
+        connections: HashMap::new(),
+        selected_nodes: vec![],
+        command_line: CommandLine::None,
+        interaction_mode: InteractionMode::Normal,
+    };
+
     let args_count = std::env::args().count();
-    if args_count == 1 {
+    if args_count == 2 {
         if let Some(filename) = std::env::args().nth(1) {
-            let mut file = File::open("example.yaml").unwrap();
+            let mut file = File::open(filename).unwrap();
             let mut contents = String::new();
             file.read_to_string(&mut contents).unwrap();
 
             let docs = YamlLoader::load_from_str(contents.as_str()).unwrap();
+
+            let mut node_ids = vec![];
 
             let yaml_nodes = docs[0]["nodes"].as_vec();
             match yaml_nodes {
@@ -123,6 +149,9 @@ fn main() {
                     for entry in entries.iter() {
                         if let Some(node) = build(entry) {
                             println!("Building {:?}", entry);
+                            let n = node.borrow();
+                            node_ids.push(n.id());
+                            params.node_map.insert(n.id(), node.clone());
                         } else {
                             println!("Failed to build {:?}", entry)
                         }
@@ -130,9 +159,60 @@ fn main() {
                 }
                 None => println!("No nodes in Yaml"),
             }
+
+            let yaml_connections = docs[0]["connections"].as_vec();
+
+            let mut end_node_id = 1;
+            let mut node_connections = vec![];
+
+            match yaml_connections {
+                Some(ref connections) => {
+                    for connection in connections.iter() {
+                        match (
+                            connection["from"]["node"].as_i64(),
+                            connection["to"]["node"].as_i64(),
+                        ) {
+                            (Some(from), Some(to)) => {
+                                println!("Found {:?} {:?}", from, to);
+                                build::connect(from, None, to, Some(1), &params.node_map);
+                                node_connections.push((from, to));
+                            }
+                            _ => println!("Failed to read connection information"),
+                        }
+                    }
+                }
+                None => println!("No connections"),
+            }
+
+            let mut end_nodes = HashSet::new();
+
+            for node_id in node_ids {
+                println!("node id {:?}", node_id);
+                let mut repeat = true;
+                let mut id = node_id;
+                while repeat {
+                    repeat = false;
+                    for &(from, to) in node_connections.iter() {
+                        if from == id {
+                            id = to;
+                            repeat = true;
+                        }
+                    }
+                }
+                end_nodes.insert(id);
+            }
+
+            println!("{:?}", end_nodes);
+
+            for node_id in end_nodes {
+                if let Some(node) = params.node_map.get(&node_id) {
+                    build::pull(node.borrow_mut().deref_mut());
+                }
+                break;
+            }
         }
-    } else if args_count == 0 {
-        gui::gui();
+    } else if args_count == 1 {
+        gui::gui(&mut params);
     } else {
         println!("Unexpected argument count: {:?}", args_count);
     }

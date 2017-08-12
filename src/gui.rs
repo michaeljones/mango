@@ -52,7 +52,7 @@ fn find_gui_node(
 }
 
 
-pub fn gui() {
+pub fn gui(mut params: &mut Params) {
     const WIDTH: u32 = 800;
     const HEIGHT: u32 = 600;
 
@@ -88,26 +88,6 @@ pub fn gui() {
     // Poll events from the window.
     let mut last_update = std::time::Instant::now();
     let mut ui_needs_update = true;
-
-    let mut params = Params {
-        node_id: 0,
-        display_menu: CreateState::None,
-        mouse_x: 0.0,
-        mouse_y: 0.0,
-        tab_x: 0.0,
-        tab_y: 0.0,
-        name_input: String::new(),
-        gui_nodes: HashMap::new(),
-        last_node: None,
-        connect_node: None,
-        node_map: HashMap::new(),
-        current_connection: None,
-        connections: HashMap::new(),
-        selected_nodes: vec![],
-        command_line: CommandLine::None,
-        interaction_mode: InteractionMode::Normal,
-    };
-
     let mut undo_stack = UndoStack::new();
 
     'main: loop {
@@ -305,7 +285,7 @@ pub fn gui() {
                     Some(glium::glutin::VirtualKeyCode::Q),
                 ) |
                 glium::glutin::Event::Closed => {
-                    if let Some(g_node) = params.last_node {
+                    if let Some(ref g_node) = params.last_node {
                         if let Some(node) = params.node_map.get(&g_node.borrow().node_id) {
                             build::pull(node.borrow_mut().deref_mut());
                         } else {
