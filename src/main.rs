@@ -148,7 +148,6 @@ fn main() {
                 Some(ref entries) => {
                     for entry in entries.iter() {
                         if let Some(node) = build(entry) {
-                            println!("Building {:?}", entry);
                             let n = node.borrow();
                             node_ids.push(n.id());
                             params.node_map.insert(n.id(), node.clone());
@@ -173,7 +172,6 @@ fn main() {
                             connection["to"]["node"].as_i64(),
                         ) {
                             (Some(from), Some(to)) => {
-                                println!("Found {:?} {:?}", from, to);
                                 build::connect(from, None, to, Some(1), &params.node_map);
                                 node_connections.push((from, to));
                             }
@@ -187,7 +185,6 @@ fn main() {
             let mut end_nodes = HashSet::new();
 
             for node_id in node_ids {
-                println!("node id {:?}", node_id);
                 let mut repeat = true;
                 let mut id = node_id;
                 while repeat {
@@ -201,8 +198,6 @@ fn main() {
                 }
                 end_nodes.insert(id);
             }
-
-            println!("{:?}", end_nodes);
 
             for node_id in end_nodes {
                 if let Some(node) = params.node_map.get(&node_id) {
