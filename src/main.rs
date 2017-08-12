@@ -88,19 +88,27 @@ pub trait Node {
 type NodeRef = Rc<RefCell<Node>>;
 
 pub trait NodeBuilder {
-    fn build(&self, id: i64, name: &str) -> Option<NodeRef>;
+    fn build(&self, id: i64, name: &str, _entry: &Yaml) -> Option<NodeRef>;
 }
 
 fn build(entry: &Yaml) -> Option<NodeRef> {
     let builders: Vec<Box<NodeBuilder>> = vec![
         Box::new(nodes::StandardInBuilder {}),
         Box::new(nodes::StandardOutBuilder {}),
+        Box::new(nodes::JsonKeysBuilder {}),
+        Box::new(nodes::JsonParseBuilder {}),
+        Box::new(nodes::JsonObjectBuilder {}),
+        Box::new(nodes::JsonStringifyBuilder {}),
+        Box::new(nodes::StringContainsBuilder {}),
+        Box::new(nodes::LinesBuilder {}),
+        Box::new(nodes::SumBuilder {}),
+        Box::new(nodes::ToIntBuilder {}),
     ];
 
     match (entry["id"].as_i64(), entry["type"].as_str()) {
         (Some(id), Some(string)) => {
             for builder in builders {
-                if let Some(node_ref) = builder.build(id, string) {
+                if let Some(node_ref) = builder.build(id, string, entry) {
                     return Some(node_ref);
                 }
             }

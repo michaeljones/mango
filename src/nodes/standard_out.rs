@@ -1,4 +1,6 @@
 
+use yaml_rust::Yaml;
+
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -55,7 +57,7 @@ impl Node for StandardOut {
 pub struct StandardOutBuilder {}
 
 impl NodeBuilder for StandardOutBuilder {
-    fn build(&self, id: i64, name: &str) -> Option<NodeRef> {
+    fn build(&self, id: i64, name: &str, _entry: &Yaml) -> Option<NodeRef> {
         if name == "standard-out" {
             return Some(Rc::new(RefCell::new(StandardOut {
                 id: id,

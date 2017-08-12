@@ -1,11 +1,15 @@
 
 extern crate json;
 
+use yaml_rust::Yaml;
+
 use std::rc::Rc;
 use std::cell::RefCell;
 
 use Spec;
 use Node;
+use NodeRef;
+use NodeBuilder;
 use FlowData;
 
 pub struct JsonObject {
@@ -62,5 +66,20 @@ impl Node for JsonObject {
             type_: String::from("json-object"),
             attributes: vec![],
         }
+    }
+}
+
+pub struct JsonObjectBuilder {}
+
+impl NodeBuilder for JsonObjectBuilder {
+    fn build(&self, id: i64, name: &str, _entry: &Yaml) -> Option<NodeRef> {
+        if name == "json-object" {
+            return Some(Rc::new(RefCell::new(JsonObject {
+                id: id,
+                keys_input: None,
+                values_input: None,
+            })));
+        }
+        None
     }
 }

@@ -1,10 +1,14 @@
 
+use yaml_rust::Yaml;
+
 use std::rc::Rc;
 use std::cell::RefCell;
 
 use Spec;
 use SpecAttribute;
 use Node;
+use NodeRef;
+use NodeBuilder;
 use NodeUI;
 use NodeUIData;
 use StringFieldData;
@@ -78,5 +82,25 @@ impl Node for StringContains {
                 SpecAttribute::String(String::from("value"), self.value.clone()),
             ],
         }
+    }
+}
+
+pub struct StringContainsBuilder {}
+
+impl NodeBuilder for StringContainsBuilder {
+    fn build(&self, id: i64, name: &str, entry: &Yaml) -> Option<NodeRef> {
+        if name == "lines" {
+            if let Some(value) = entry["value"].as_str() {
+                return Some(Rc::new(RefCell::new(StringContains {
+                    id: id,
+                    input: None,
+                    value: String::from(value),
+                })));
+            }
+            else {
+                println!("No 'value' for string contains node");
+            }
+        }
+        None
     }
 }

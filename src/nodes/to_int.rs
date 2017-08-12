@@ -1,9 +1,13 @@
 
+use yaml_rust::Yaml;
+
 use std::rc::Rc;
 use std::cell::RefCell;
 
 use Spec;
 use Node;
+use NodeRef;
+use NodeBuilder;
 use FlowData;
 
 pub struct ToInt {
@@ -50,5 +54,19 @@ impl Node for ToInt {
             type_: String::from("sum"),
             attributes: vec![],
         }
+    }
+}
+
+pub struct ToIntBuilder {}
+
+impl NodeBuilder for ToIntBuilder {
+    fn build(&self, id: i64, name: &str, _entry: &Yaml) -> Option<NodeRef> {
+        if name == "to-int" {
+            return Some(Rc::new(RefCell::new(ToInt {
+                id: id,
+                input: None,
+            })));
+        }
+        None
     }
 }
