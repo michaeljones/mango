@@ -1,5 +1,5 @@
 [package]
-name = "rust-etl"
+name = "mango"
 version = "0.1.0"
 authors = ["Michael Jones <m.pricejones@gmail.com>"]
 
