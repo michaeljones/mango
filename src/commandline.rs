@@ -91,12 +91,29 @@ impl Command for SaveCommand {
             })
             .collect();
 
+        let gui = params
+            .gui_nodes
+            .values()
+            .map(|gui_node| {
+                let g = gui_node.borrow();
+                let mut hash = BTreeMap::new();
+                hash.insert(Yaml::String(String::from("id")), Yaml::Integer(g.node_id));
+                hash.insert(Yaml::String(String::from("x")), Yaml::Real(g.x.to_string()));
+                hash.insert(Yaml::String(String::from("y")), Yaml::Real(g.y.to_string()));
+                Yaml::Hash(hash)
+            })
+            .collect();
+
         let mut doc_hash = BTreeMap::new();
 
         doc_hash.insert(Yaml::String(String::from("nodes")), Yaml::Array(nodes));
         doc_hash.insert(
             Yaml::String(String::from("connections")),
             Yaml::Array(connections),
+        );
+        doc_hash.insert(
+            Yaml::String(String::from("gui")),
+            Yaml::Array(gui),
         );
 
         let mut buffer = String::new();
