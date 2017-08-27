@@ -29,19 +29,19 @@ pub struct Connection {
 }
 
 widget_ids! {
-        struct Ids {
-            canvas,
-            text_edit,
-            scrollbar,
-            name_input_background,
-            nodes[],
-            line,
-            node_panel,
-            node_background,
-            parameters_panel,
-            command_line,
-        }
+    struct Ids {
+        canvas,
+        text_edit,
+        scrollbar,
+        name_input_background,
+        nodes[],
+        line,
+        node_panel,
+        node_background,
+        parameters_panel,
+        command_line,
     }
+}
 
 fn find_gui_node(
     id: conrod::widget::id::Id,
@@ -51,21 +51,16 @@ fn find_gui_node(
 }
 
 
-pub fn gui(mut params: &mut Params) {
-    const WIDTH: u32 = 800;
-    const HEIGHT: u32 = 600;
+pub fn gui(mut ui: &mut conrod::Ui, mut params: &mut Params, width: u32, height: u32) {
 
     // Build the window.
     let display = glium::glutin::WindowBuilder::new()
         .with_vsync()
-        .with_dimensions(WIDTH, HEIGHT)
+        .with_dimensions(width, height)
         .with_title("slipstream")
         .with_multisampling(4)
         .build_glium()
         .unwrap();
-
-    // construct our `Ui`.
-    let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
     // Generate the widget identifiers.
     let mut ids = Ids::new(ui.widget_id_generator());

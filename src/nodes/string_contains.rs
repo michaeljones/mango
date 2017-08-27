@@ -96,8 +96,7 @@ impl NodeBuilder for StringContainsBuilder {
                     input: None,
                     value: String::from(value),
                 })));
-            }
-            else {
+            } else {
                 println!("No 'value' for string contains node");
             }
         }

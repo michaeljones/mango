@@ -17,6 +17,7 @@ use std::collections::HashSet;
 use std::ops::DerefMut;
 
 use params::{Params, CreateState, CommandLine, InteractionMode};
+use gui::Connection;
 
 mod nodes;
 mod gui;
@@ -119,6 +120,125 @@ fn build(entry: &Yaml) -> Option<NodeRef> {
     None
 }
 
+fn load_file(filename: String, mut generator: conrod::widget::id::Generator, params: &mut Params) {
+
+    let mut file = File::open(filename).unwrap();
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
+
+    let docs = YamlLoader::load_from_str(contents.as_str()).unwrap();
+
+    let mut node_ids = vec![];
+
+    // Read nodes
+    let yaml_nodes = docs[0]["nodes"].as_vec();
+    match yaml_nodes {
+        Some(ref entries) => {
+            for entry in entries.iter() {
+                if let Some(node) = build(entry) {
+                    let n = node.borrow();
+                    node_ids.push(n.id());
+                    params.node_map.insert(n.id(), node.clone());
+                } else {
+                    println!("Failed to build {:?}", entry)
+                }
+            }
+        }
+        None => println!("No nodes in Yaml"),
+    }
+
+    // Read connections
+    let yaml_connections = docs[0]["connections"].as_vec();
+
+    let mut node_connections = vec![];
+
+    match yaml_connections {
+        Some(ref connections) => {
+            for connection in connections.iter() {
+                match (
+                    connection["from"]["node"].as_i64(),
+                    connection["to"]["node"].as_i64(),
+                ) {
+                    (Some(from), Some(to)) => {
+                        build::connect(from, None, to, Some(1), &params.node_map);
+                        node_connections.push((from, to));
+                        let gui_id = generator.next();
+                        params.connections.insert(
+                            (from, to),
+                            Connection {
+                                id: gui_id,
+                                from: from,
+                                to: to,
+                            },
+                        );
+                    }
+                    _ => println!("Failed to read connection information"),
+                }
+            }
+        }
+        None => println!("No connections"),
+    }
+
+    // Read gui positions
+    let yaml_gui = docs[0]["gui"].as_vec();
+
+    match yaml_gui {
+        Some(ref gui) => {
+            for entry in gui.iter() {
+                match (
+                    entry["id"].as_i64(),
+                    entry["label"].as_str(),
+                    entry["x"].as_f64(),
+                    entry["y"].as_f64(),
+                ) {
+                    (Some(node_id), Some(label), Some(x), Some(y)) => {
+                        let gui_id = generator.next();
+                        let g_node = Rc::new(RefCell::new(gui_node::GuiNodeData {
+                            id: gui_id,
+                            parameter_ids: conrod::widget::id::List::new(),
+                            node_id: node_id,
+                            label: String::from(label),
+                            x: x,
+                            y: y,
+                            origin_x: x,
+                            origin_y: y,
+                            mode: gui_node::Mode::None,
+                        }));
+
+                        params.gui_nodes.insert(gui_id, g_node);
+                    }
+                    _ => println!("Failed to read gui information"),
+                }
+            }
+        }
+        None => println!("No gui information"),
+    }
+
+    let mut end_nodes = HashSet::new();
+
+    for node_id in node_ids {
+        let mut repeat = true;
+        let mut id = node_id;
+        while repeat {
+            repeat = false;
+            for &(from, to) in node_connections.iter() {
+                if from == id {
+                    id = to;
+                    repeat = true;
+                }
+            }
+        }
+        end_nodes.insert(id);
+    }
+
+    for node_id in end_nodes {
+        if let Some(node) = params.node_map.get(&node_id) {
+            build::pull(node.borrow_mut().deref_mut());
+        }
+        break;
+    }
+}
+
 fn main() {
 
     let mut params = Params {
@@ -140,81 +260,29 @@ fn main() {
         interaction_mode: InteractionMode::Normal,
     };
 
+    const WIDTH: u32 = 800;
+    const HEIGHT: u32 = 600;
+
     let args_count = std::env::args().count();
     if args_count == 2 {
+
+        // construct our `Ui`.
+        let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
+
         if let Some(filename) = std::env::args().nth(1) {
-            let mut file = File::open(filename).unwrap();
-            let mut contents = String::new();
-            file.read_to_string(&mut contents).unwrap();
 
-            let docs = YamlLoader::load_from_str(contents.as_str()).unwrap();
-
-            let mut node_ids = vec![];
-
-            let yaml_nodes = docs[0]["nodes"].as_vec();
-            match yaml_nodes {
-                Some(ref entries) => {
-                    for entry in entries.iter() {
-                        if let Some(node) = build(entry) {
-                            let n = node.borrow();
-                            node_ids.push(n.id());
-                            params.node_map.insert(n.id(), node.clone());
-                        } else {
-                            println!("Failed to build {:?}", entry)
-                        }
-                    }
-                }
-                None => println!("No nodes in Yaml"),
+            {
+                let generator = ui.widget_id_generator();
+                load_file(filename, generator, &mut params);
             }
 
-            let yaml_connections = docs[0]["connections"].as_vec();
+            gui::gui(&mut ui, &mut params, WIDTH, HEIGHT);
 
-            let mut node_connections = vec![];
-
-            match yaml_connections {
-                Some(ref connections) => {
-                    for connection in connections.iter() {
-                        match (
-                            connection["from"]["node"].as_i64(),
-                            connection["to"]["node"].as_i64(),
-                        ) {
-                            (Some(from), Some(to)) => {
-                                build::connect(from, None, to, Some(1), &params.node_map);
-                                node_connections.push((from, to));
-                            }
-                            _ => println!("Failed to read connection information"),
-                        }
-                    }
-                }
-                None => println!("No connections"),
-            }
-
-            let mut end_nodes = HashSet::new();
-
-            for node_id in node_ids {
-                let mut repeat = true;
-                let mut id = node_id;
-                while repeat {
-                    repeat = false;
-                    for &(from, to) in node_connections.iter() {
-                        if from == id {
-                            id = to;
-                            repeat = true;
-                        }
-                    }
-                }
-                end_nodes.insert(id);
-            }
-
-            for node_id in end_nodes {
-                if let Some(node) = params.node_map.get(&node_id) {
-                    build::pull(node.borrow_mut().deref_mut());
-                }
-                break;
-            }
         }
     } else if args_count == 1 {
-        gui::gui(&mut params);
+        // construct our `Ui`.
+        let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
+        gui::gui(&mut ui, &mut params, WIDTH, HEIGHT);
     } else {
         println!("Unexpected argument count: {:?}", args_count);
     }

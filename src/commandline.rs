@@ -98,8 +98,18 @@ impl Command for SaveCommand {
                 let g = gui_node.borrow();
                 let mut hash = BTreeMap::new();
                 hash.insert(Yaml::String(String::from("id")), Yaml::Integer(g.node_id));
-                hash.insert(Yaml::String(String::from("x")), Yaml::Real(g.x.to_string()));
-                hash.insert(Yaml::String(String::from("y")), Yaml::Real(g.y.to_string()));
+                hash.insert(
+                    Yaml::String(String::from("label")),
+                    Yaml::String(g.label.clone()),
+                );
+                hash.insert(
+                    Yaml::String(String::from("x")),
+                    Yaml::Real(format!("{0:.1}", g.x)),
+                );
+                hash.insert(
+                    Yaml::String(String::from("y")),
+                    Yaml::Real(format!("{0:.1}", g.y)),
+                );
                 Yaml::Hash(hash)
             })
             .collect();
@@ -111,10 +121,7 @@ impl Command for SaveCommand {
             Yaml::String(String::from("connections")),
             Yaml::Array(connections),
         );
-        doc_hash.insert(
-            Yaml::String(String::from("gui")),
-            Yaml::Array(gui),
-        );
+        doc_hash.insert(Yaml::String(String::from("gui")), Yaml::Array(gui));
 
         let mut buffer = String::new();
         {
