@@ -214,14 +214,17 @@ fn load_file(filename: String, mut generator: conrod::widget::id::Generator, par
         None => println!("No gui information"),
     }
 
+}
+
+fn run(params: &mut Params) {
     let mut end_nodes = HashSet::new();
 
-    for node_id in node_ids {
+    for (node_id, _) in params.node_map.iter() {
         let mut repeat = true;
-        let mut id = node_id;
+        let mut id = *node_id;
         while repeat {
             repeat = false;
-            for &(from, to) in node_connections.iter() {
+            for (&(from, to), _) in params.connections.iter() {
                 if from == id {
                     id = to;
                     repeat = true;
@@ -278,11 +281,14 @@ fn main() {
 
             gui::gui(&mut ui, &mut params, WIDTH, HEIGHT);
 
+            run(&mut params);
         }
     } else if args_count == 1 {
         // construct our `Ui`.
         let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
         gui::gui(&mut ui, &mut params, WIDTH, HEIGHT);
+
+        run(&mut params);
     } else {
         println!("Unexpected argument count: {:?}", args_count);
     }

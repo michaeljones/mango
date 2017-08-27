@@ -279,16 +279,6 @@ pub fn gui(mut ui: &mut conrod::Ui, mut params: &mut Params, width: u32, height:
                     Some(glium::glutin::VirtualKeyCode::Q),
                 ) |
                 glium::glutin::Event::Closed => {
-                    if let Some(ref g_node) = params.last_node {
-                        if let Some(node) = params.node_map.get(&g_node.borrow().node_id) {
-                            build::pull(node.borrow_mut().deref_mut());
-                        } else {
-                            println!("failed to find node in node_map");
-                        }
-
-                    } else {
-                        println!("failed to find last node");
-                    }
                     break 'main;
                 }
                 _ => {}
