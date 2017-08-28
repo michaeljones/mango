@@ -494,64 +494,6 @@ fn set_ui(
                     params.current_connection = Some(state.mouse.xy);
                 }
                 gui_node::Event::ConnectInput => {
-
-                    /*
-                        let mut nnn: Option<&Rc<RefCell<gui_node::GuiNodeData>>> = None;
-
-                        {
-                            let graph = ui.widget_graph();
-                            let mut walker = graph.children(ids.canvas);
-                            let global = ui.global_input();
-                            let ref state = global.current;
-                            loop {
-                                // Walk the graph to find all nodes
-                                if let Some(node_index) = walker.next_node(graph) {
-                                    // If the node index corresponds to a gui_node
-                                    match (find_gui_node(node_index, &params.gui_nodes),
-                                           graph.node(node_index)) {
-                                        (Some(ref gui_node),
-                                         Some(&conrod::graph::Node::Widget(ref _container))) => {
-                                            let m = gui_node.borrow();
-                                            if in_box(&state.mouse.xy, m.x, m.y) {
-                                                nnn = Some(gui_node.clone());
-                                                break;
-                                            }
-                                        }
-                                        _ => {
-                                            println!("No match");
-                                        }
-                                    }
-                                } else {
-                                    break;
-                                }
-                            }
-
-                        }
-                        match nnn {
-                            Some(ref node) => {
-                                let nn = node.borrow();
-                                build::connect(node_id,
-                                               None,
-                                               nn.node_id,
-                                               Some(1),
-                                               &params.node_map);
-                                let connection_id;
-                                {
-                                    let mut generator = ui.widget_id_generator();
-                                    connection_id = generator.next();
-                                }
-                                params
-                                    .connections
-                                    .push(Connection {
-                                              id: connection_id,
-                                              from: node_id,
-                                              to: nn.node_id,
-                                          });
-                            }
-                            None => {}
-                        }
-                        params.current_connection = None;
-                        */
                 }
                 _ => {}
             }
