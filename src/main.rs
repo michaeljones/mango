@@ -147,6 +147,9 @@ fn load_file(filename: String, mut generator: conrod::widget::id::Generator, par
         None => println!("No nodes in Yaml"),
     }
 
+    // Update params idea of what the node id is so that we don't create duplicate node ids
+    params.node_id = *(node_ids.iter().max().unwrap_or(&0));
+
     // Read connections
     let yaml_connections = docs[0]["connections"].as_vec();
 

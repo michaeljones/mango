@@ -601,7 +601,7 @@ fn create_node(
     mut generator: conrod::widget::id::Generator,
 ) -> () {
     let new_node_id = params.node_id + 1;
-    params.node_id = params.node_id + 1;
+    params.node_id = new_node_id;
     let maybe_node = build::build(new_node_id, params.name_input.clone());
     if let Some(node) = maybe_node {
         let id = generator.next();
