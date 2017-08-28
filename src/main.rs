@@ -266,30 +266,51 @@ fn main() {
     const WIDTH: u32 = 800;
     const HEIGHT: u32 = 600;
 
-    let args_count = std::env::args().count();
-    if args_count == 2 {
+    if let Some(action) = std::env::args().nth(1) {
 
-        // construct our `Ui`.
-        let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
+        match action.as_ref() {
+            "run" => {
+                if let Some(filename) = std::env::args().nth(2) {
 
-        if let Some(filename) = std::env::args().nth(1) {
+                    let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
-            {
-                let generator = ui.widget_id_generator();
-                load_file(filename, generator, &mut params);
+                    {
+                        let generator = ui.widget_id_generator();
+                        load_file(filename, generator, &mut params);
+                    }
+
+                    run(&mut params);
+                } else {
+                    println!("No filename provided for 'run' action")
+                }
             }
+            "edit" => {
+                if let Some(filename) = std::env::args().nth(2) {
 
-            gui::gui(&mut ui, &mut params, WIDTH, HEIGHT);
+                    let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
-            run(&mut params);
+                    {
+                        let generator = ui.widget_id_generator();
+                        load_file(filename, generator, &mut params);
+                    }
+
+                    gui::gui(&mut ui, &mut params, WIDTH, HEIGHT);
+
+                    run(&mut params);
+                } else {
+                    println!("No filename provided for 'edit' action")
+                }
+            }
+            "new" => {
+                let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
+                gui::gui(&mut ui, &mut params, WIDTH, HEIGHT);
+                run(&mut params);
+            }
+            _ => {
+                println!("Unknown action: {:?}", action);
+            }
         }
-    } else if args_count == 1 {
-        // construct our `Ui`.
-        let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
-        gui::gui(&mut ui, &mut params, WIDTH, HEIGHT);
-
-        run(&mut params);
     } else {
-        println!("Unexpected argument count: {:?}", args_count);
+        println!("Usage: mango <run|edit> [filename]");
     }
 }
