@@ -45,6 +45,13 @@ There are two use cases:
   commandline piping.
 
 
+## Technology
+
+Mango is written in Rust & uses the [Conrod](https://github.com/PistonDevelopers/conrod) framework
+for the 2D graphics. It is possible that it'll be served better by a different framework or a
+combination of Conrod for the node graph & a more traditional GUI framework for the rest.
+
+
 ## Screenshot
 
 ![Mango Screenshot](/images/mango-screenshot.png?raw=true)
