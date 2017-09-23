@@ -314,6 +314,6 @@ fn main() {
             }
         }
     } else {
-        println!("Usage: mango <run|edit> [filename]");
+        println!("Usage: mango <new|run|edit> [filename]");
     }
 }
