@@ -6,6 +6,24 @@ provide common operations in a more powerful, flexible & discoverable way than t
 Simple data typing along with easy to find, useful transformations make it an ideal tool for quickly
 messing around with data.
 
+## How to use
+
+1.  Clone this repository
+2.  Run `cargo build`
+3.  Run `cat ./examples/json | ./target/debug/mango new`
+4.  Press 'i' to insert the first node, this opens a text-prompt.
+5.  Type 'standard-in' and press enter to create the node. This will also select the node.
+6.  Press 'a' to add a node after the selected node. Type 'json-parse' and enter.
+7.  Press 'a' to add another node. Type 'standard-out' and enter'.
+8.  Press 'i' to insert a node between the current node & its input. Type 'json-keys' and enter.
+9.  Press 'q' to exit and run the node graph.
+10. You should see:
+    ```
+    simple
+    secondkey
+    ```
+    Printed to standard out. These are the two keys in the json file.
+
 
 ## Status
 
@@ -68,15 +86,8 @@ written to standard-out.
 
 ## Controls
 
-The interface is largely keyboard driven & inspired by vim key bindings. A typical session might
-look like:
-
-1. Press 'i' to insert the first node, this opens a text-prompt.
-2. Type 'standard-in' and press enter to create the node. This will also select the node.
-3. Press 'a' to add a node after the selected node. Type 'json-parse' and enter.
-4. Press 'a' to add another node. Type 'standard-out' and enter'.
-5. Press 'i' to insert a node between the current node & its input. Type 'json-keys' and enter.
-6. Press 'q' to exit and run the node graph.
+The interface is largely keyboard driven & inspired by vim key bindings. See the 'How to use'
+section for a typical session example.
 
 
 ### Keys
