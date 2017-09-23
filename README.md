@@ -94,19 +94,15 @@ section for a typical session example.
 
 | **Key** | **Function** |
 | ------- | ------------ |
-| i | Insert new node as mouse position if nothing is selected. Inserts as input to the currently
-selected node. Inserts a node between the current node & its input if it has one. |
-| a | Adds a node after the currently selected node. Insert a node between the currently select node
-& its output if it has one. |
-| s | Replaces the currently selected node with a new node, wiring in any inputs & outputs that were
-present. |
+| i | Insert new node as mouse position if nothing is selected. Inserts as input to the currently selected node. Inserts a node between the current node & its input if it has one. |
+| a | Adds a node after the currently selected node. Insert a node between the currently select node & its output if it has one. |
+| s | Replaces the currently selected node with a new node, wiring in any inputs & outputs that were present. |
 | q | Exits and runs the node graph |
 | u | Undoes the last action |
 | r | Redoes the last undone action |
 | h | Moves the selection from the current node to its input |
 | l | Moves the selection from the current nodes to its output |
-| : | Start a command prompt at the bottom that has only one acceptable command `:w <filename>`
-which writes the current nodes graph to the specified file |
+| : | Start a command prompt at the bottom that has only one acceptable command `:w <filename>` which writes the current nodes graph to the specified file |
 
 
 ## Implemented Nodes
