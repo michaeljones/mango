@@ -31,7 +31,7 @@ The project is in early alpha. It is fun to play around with as a concept but th
 still to do.
 
 This is also my first Rust project of any size so that code is likely to be horrible and heavily
-influenced by my time spend with C++ & Javascript.
+influenced by my time spent with C++ & Javascript.
 
 
 ## Motivation
