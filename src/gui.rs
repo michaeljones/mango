@@ -19,7 +19,6 @@ use std::ops::Deref;
 use conrod;
 use conrod::backend::glium::glium;
 use conrod::backend::glium::glium::{DisplayBuild, Surface};
-use conrod::graph::Walker;
 use std;
 
 #[derive(Debug)]
@@ -30,19 +29,19 @@ pub struct Connection {
 }
 
 widget_ids! {
-        struct Ids {
-            canvas,
-            text_edit,
-            scrollbar,
-            name_input_background,
-            nodes[],
-            line,
-            node_panel,
-            node_background,
-            parameters_panel,
-            command_line,
-        }
+    struct Ids {
+        canvas,
+        text_edit,
+        scrollbar,
+        name_input_background,
+        nodes[],
+        line,
+        node_panel,
+        node_background,
+        parameters_panel,
+        command_line,
     }
+}
 
 fn find_gui_node(
     id: conrod::widget::id::Id,
@@ -52,21 +51,16 @@ fn find_gui_node(
 }
 
 
-pub fn gui() {
-    const WIDTH: u32 = 800;
-    const HEIGHT: u32 = 600;
+pub fn gui(mut ui: &mut conrod::Ui, mut params: &mut Params, width: u32, height: u32) {
 
     // Build the window.
     let display = glium::glutin::WindowBuilder::new()
         .with_vsync()
-        .with_dimensions(WIDTH, HEIGHT)
+        .with_dimensions(width, height)
         .with_title("slipstream")
         .with_multisampling(4)
         .build_glium()
         .unwrap();
-
-    // construct our `Ui`.
-    let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
 
     // Generate the widget identifiers.
     let mut ids = Ids::new(ui.widget_id_generator());
@@ -88,26 +82,6 @@ pub fn gui() {
     // Poll events from the window.
     let mut last_update = std::time::Instant::now();
     let mut ui_needs_update = true;
-
-    let mut params = Params {
-        node_id: 0,
-        display_menu: CreateState::None,
-        mouse_x: 0.0,
-        mouse_y: 0.0,
-        tab_x: 0.0,
-        tab_y: 0.0,
-        name_input: String::new(),
-        gui_nodes: HashMap::new(),
-        last_node: None,
-        connect_node: None,
-        node_map: HashMap::new(),
-        current_connection: None,
-        connections: HashMap::new(),
-        selected_nodes: vec![],
-        command_line: CommandLine::None,
-        interaction_mode: InteractionMode::Normal,
-    };
-
     let mut undo_stack = UndoStack::new();
 
     'main: loop {
@@ -305,16 +279,6 @@ pub fn gui() {
                     Some(glium::glutin::VirtualKeyCode::Q),
                 ) |
                 glium::glutin::Event::Closed => {
-                    if let Some(g_node) = params.last_node {
-                        if let Some(node) = params.node_map.get(&g_node.borrow().node_id) {
-                            build::pull(node.borrow_mut().deref_mut());
-                        } else {
-                            println!("failed to find node in node_map");
-                        }
-
-                    } else {
-                        println!("failed to find last node");
-                    }
                     break 'main;
                 }
                 _ => {}
@@ -395,20 +359,18 @@ fn set_ui(
 
     widget::Canvas::new()
         .color(color::DARK_CHARCOAL)
-        .flow_right(
-            &[
-                (
-                    ids.node_panel,
-                    widget::Canvas::new().length(500.0).color(color::RED),
-                ),
-                (
-                    ids.parameters_panel,
-                    widget::Canvas::new()
-                        .length(300.0)
-                        .rgb(91.0 / 256.0, 103.0 / 256.0, 107.0 / 256.0),
-                ),
-            ],
-        )
+        .flow_right(&[
+            (
+                ids.node_panel,
+                widget::Canvas::new().length(500.0).color(color::RED),
+            ),
+            (
+                ids.parameters_panel,
+                widget::Canvas::new()
+                    .length(300.0)
+                    .rgb(91.0 / 256.0, 103.0 / 256.0, 107.0 / 256.0),
+            ),
+        ])
         .set(ids.canvas, ui);
 
     for event in widgets::Background::new()
@@ -508,25 +470,11 @@ fn set_ui(
         }
     }
 
-    fn in_box(mouse_xy: &conrod::position::Point, node_x: f64, node_y: f64) -> bool {
-        return if mouse_xy[0] < (node_x - 400.0) || mouse_xy[0] > ((node_x - 400.0) + 140.0) {
-            false
-        } else if mouse_xy[1] > ((600.0 - node_y) - 300.0) ||
-                   mouse_xy[1] < (((600.0 - node_y) - 300.0) - 30.0)
-        {
-            false
-        } else {
-            true
-        };
-    }
-
     for (_, g_node) in params.gui_nodes.iter() {
         let id;
-        let node_id;
         {
             let node = g_node.borrow();
             id = node.id;
-            node_id = node.node_id;
         }
         let selected = vec![id] == params.selected_nodes;
         for event in gui_node::GuiNode::new(g_node.clone(), selected)
@@ -546,64 +494,6 @@ fn set_ui(
                     params.current_connection = Some(state.mouse.xy);
                 }
                 gui_node::Event::ConnectInput => {
-
-                    /*
-                        let mut nnn: Option<&Rc<RefCell<gui_node::GuiNodeData>>> = None;
-
-                        {
-                            let graph = ui.widget_graph();
-                            let mut walker = graph.children(ids.canvas);
-                            let global = ui.global_input();
-                            let ref state = global.current;
-                            loop {
-                                // Walk the graph to find all nodes
-                                if let Some(node_index) = walker.next_node(graph) {
-                                    // If the node index corresponds to a gui_node
-                                    match (find_gui_node(node_index, &params.gui_nodes),
-                                           graph.node(node_index)) {
-                                        (Some(ref gui_node),
-                                         Some(&conrod::graph::Node::Widget(ref _container))) => {
-                                            let m = gui_node.borrow();
-                                            if in_box(&state.mouse.xy, m.x, m.y) {
-                                                nnn = Some(gui_node.clone());
-                                                break;
-                                            }
-                                        }
-                                        _ => {
-                                            println!("No match");
-                                        }
-                                    }
-                                } else {
-                                    break;
-                                }
-                            }
-
-                        }
-                        match nnn {
-                            Some(ref node) => {
-                                let nn = node.borrow();
-                                build::connect(node_id,
-                                               None,
-                                               nn.node_id,
-                                               Some(1),
-                                               &params.node_map);
-                                let connection_id;
-                                {
-                                    let mut generator = ui.widget_id_generator();
-                                    connection_id = generator.next();
-                                }
-                                params
-                                    .connections
-                                    .push(Connection {
-                                              id: connection_id,
-                                              from: node_id,
-                                              to: nn.node_id,
-                                          });
-                            }
-                            None => {}
-                        }
-                        params.current_connection = None;
-                        */
                 }
                 _ => {}
             }
@@ -711,7 +601,7 @@ fn create_node(
     mut generator: conrod::widget::id::Generator,
 ) -> () {
     let new_node_id = params.node_id + 1;
-    params.node_id = params.node_id + 1;
+    params.node_id = new_node_id;
     let maybe_node = build::build(new_node_id, params.name_input.clone());
     if let Some(node) = maybe_node {
         let id = generator.next();
@@ -744,10 +634,9 @@ fn create_node(
 
                     match params.display_menu {
                         CreateState::Before => {
-                            if let Some(connected) = find_input_node(
-                                b.node_id,
-                                &params.connections,
-                            ) {
+                            if let Some(connected) =
+                                find_input_node(b.node_id, &params.connections)
+                            {
                                 commands.push(CreateConnectionCommand::new_ref(
                                     generator.next(),
                                     connected,

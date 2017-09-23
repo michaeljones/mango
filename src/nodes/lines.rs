@@ -1,9 +1,13 @@
 
+use yaml_rust::Yaml;
+
 use std::rc::Rc;
 use std::cell::RefCell;
 
 use Spec;
 use Node;
+use NodeRef;
+use NodeBuilder;
 use FlowData;
 
 pub struct Lines {
@@ -46,5 +50,19 @@ impl Node for Lines {
             type_: String::from("lines"),
             attributes: vec![],
         }
+    }
+}
+
+pub struct LinesBuilder {}
+
+impl NodeBuilder for LinesBuilder {
+    fn build(&self, id: i64, name: &str, _entry: &Yaml) -> Option<NodeRef> {
+        if name == "lines" {
+            return Some(Rc::new(RefCell::new(Lines {
+                id: id,
+                input: None,
+            })));
+        }
+        None
     }
 }

@@ -1,25 +1,33 @@
 
 # Mango
 
+## Goals
+
+## Implemented Nodes
+
+| **Name** | **From** | **To** |
+| Standard in | - | StringArray |
+| Standard out | * | - |
+| Json parse | String | Json |
+| Json stringify | Json | String |
+| Json keys | Json | StringArray |
+| Json object | StringArray + StringArray | Json |
+| Lines | String | StringArray |
+| String Contains | StringArray | StringArray |
+| Sum | IntArray | Int |
+| To Int | StringArray | IntArray |
+
 ## Potential Nodes
 
-- Standard in
-- Standard out
 - File in
 - File out
 - CSV parse
 - CSV stringify
-- Json parse
-- Json stringify
-- Json keys
 - Json values
 - Json pluck
 - Json omit
-- Json object
 - Key to value
-- To int
 - To float
-- Sum
 - Add
 - Substract
 - String prepend

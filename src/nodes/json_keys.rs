@@ -1,9 +1,13 @@
 
+use yaml_rust::Yaml;
+
 use std::rc::Rc;
 use std::cell::RefCell;
 
 use Spec;
 use Node;
+use NodeRef;
+use NodeBuilder;
 use FlowData;
 
 pub struct JsonKeys {
@@ -46,5 +50,19 @@ impl Node for JsonKeys {
             type_: String::from("json-keys"),
             attributes: vec![],
         }
+    }
+}
+
+pub struct JsonKeysBuilder {}
+
+impl NodeBuilder for JsonKeysBuilder {
+    fn build(&self, id: i64, name: &str, _entry: &Yaml) -> Option<NodeRef> {
+        if name == "json-keys" {
+            return Some(Rc::new(RefCell::new(JsonKeys {
+                id: id,
+                input: None,
+            })));
+        }
+        None
     }
 }

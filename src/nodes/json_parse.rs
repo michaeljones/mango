@@ -1,11 +1,15 @@
 
 extern crate json;
 
+use yaml_rust::Yaml;
+
 use std::rc::Rc;
 use std::cell::RefCell;
 
 use Spec;
 use Node;
+use NodeRef;
+use NodeBuilder;
 use FlowData;
 
 pub struct JsonParse {
@@ -47,5 +51,19 @@ impl Node for JsonParse {
             type_: String::from("json-parse"),
             attributes: vec![],
         }
+    }
+}
+
+pub struct JsonParseBuilder {}
+
+impl NodeBuilder for JsonParseBuilder {
+    fn build(&self, id: i64, name: &str, _entry: &Yaml) -> Option<NodeRef> {
+        if name == "json-parse" {
+            return Some(Rc::new(RefCell::new(JsonParse {
+                id: id,
+                input: None,
+            })));
+        }
+        None
     }
 }

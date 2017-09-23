@@ -1,9 +1,13 @@
 
+use yaml_rust::Yaml;
+
 use std::rc::Rc;
 use std::cell::RefCell;
 
 use Spec;
 use Node;
+use NodeRef;
+use NodeBuilder;
 use FlowData;
 
 pub struct Sum {
@@ -43,5 +47,19 @@ impl Node for Sum {
             type_: String::from("sum"),
             attributes: vec![],
         }
+    }
+}
+
+pub struct SumBuilder {}
+
+impl NodeBuilder for SumBuilder {
+    fn build(&self, id: i64, name: &str, _entry: &Yaml) -> Option<NodeRef> {
+        if name == "sum" {
+            return Some(Rc::new(RefCell::new(Sum {
+                id: id,
+                input: None,
+            })));
+        }
+        None
     }
 }

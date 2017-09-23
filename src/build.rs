@@ -6,16 +6,16 @@ use std::collections::HashMap;
 use Node;
 use FlowData;
 
-use nodes::standard_in::StandardIn;
-use nodes::standard_out::StandardOut;
-use nodes::lines::Lines;
-use nodes::json_parse::JsonParse;
-use nodes::json_stringify::JsonStringify;
-use nodes::json_keys::JsonKeys;
-use nodes::json_object::JsonObject;
-use nodes::to_int::ToInt;
-use nodes::sum::Sum;
-use nodes::string_contains::StringContains;
+use nodes::StandardIn;
+use nodes::StandardOut;
+use nodes::Lines;
+use nodes::JsonParse;
+use nodes::JsonStringify;
+use nodes::JsonKeys;
+use nodes::JsonObject;
+use nodes::ToInt;
+use nodes::Sum;
+use nodes::StringContains;
 
 pub fn build(id: i64, type_: String) -> Option<Rc<RefCell<Node>>> {
     match type_.as_str() {

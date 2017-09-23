@@ -1,9 +1,13 @@
 
+use yaml_rust::Yaml;
+
 use std::rc::Rc;
 use std::cell::RefCell;
 
 use Spec;
 use Node;
+use NodeRef;
+use NodeBuilder;
 use FlowData;
 
 pub struct StandardOut {
@@ -47,5 +51,19 @@ impl Node for StandardOut {
             type_: String::from("standard-out"),
             attributes: vec![],
         }
+    }
+}
+
+pub struct StandardOutBuilder {}
+
+impl NodeBuilder for StandardOutBuilder {
+    fn build(&self, id: i64, name: &str, _entry: &Yaml) -> Option<NodeRef> {
+        if name == "standard-out" {
+            return Some(Rc::new(RefCell::new(StandardOut {
+                id: id,
+                input: None,
+            })));
+        }
+        None
     }
 }

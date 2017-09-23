@@ -1,7 +1,6 @@
 
 use std::collections::BTreeMap;
 use std::fs::File;
-use std::io::prelude::*;
 use std::io::Write;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -20,7 +19,9 @@ struct SaveCommand {
 
 impl SaveCommand {
     pub fn new(components: &Vec<String>) -> Self {
-        SaveCommand { components: components.clone() }
+        SaveCommand {
+            components: components.clone(),
+        }
     }
 
     pub fn new_ref(components: &Vec<String>) -> Rc<RefCell<Self>> {
@@ -90,6 +91,29 @@ impl Command for SaveCommand {
             })
             .collect();
 
+        let gui = params
+            .gui_nodes
+            .values()
+            .map(|gui_node| {
+                let g = gui_node.borrow();
+                let mut hash = BTreeMap::new();
+                hash.insert(Yaml::String(String::from("id")), Yaml::Integer(g.node_id));
+                hash.insert(
+                    Yaml::String(String::from("label")),
+                    Yaml::String(g.label.clone()),
+                );
+                hash.insert(
+                    Yaml::String(String::from("x")),
+                    Yaml::Real(format!("{0:.1}", g.x)),
+                );
+                hash.insert(
+                    Yaml::String(String::from("y")),
+                    Yaml::Real(format!("{0:.1}", g.y)),
+                );
+                Yaml::Hash(hash)
+            })
+            .collect();
+
         let mut doc_hash = BTreeMap::new();
 
         doc_hash.insert(Yaml::String(String::from("nodes")), Yaml::Array(nodes));
@@ -97,20 +121,27 @@ impl Command for SaveCommand {
             Yaml::String(String::from("connections")),
             Yaml::Array(connections),
         );
+        doc_hash.insert(Yaml::String(String::from("gui")), Yaml::Array(gui));
 
         let mut buffer = String::new();
         {
             let mut emitter = YamlEmitter::new(&mut buffer);
-            emitter.dump(&Yaml::Hash(doc_hash));
+            match emitter.dump(&Yaml::Hash(doc_hash)) {
+                Ok(_) => {}
+                Err(error) => println!("Failed to convert to yaml: {:?}", error),
+            }
         }
 
         let mut file = File::create(self.components[1].clone()).unwrap();
-        file.write_all(buffer.as_bytes());
+        match file.write_all(buffer.as_bytes()) {
+            Ok(_) => {}
+            Err(error) => println!("Failed to write file: {:?}", error),
+        }
     }
 
-    fn redo(&mut self, params: &mut Params) {}
+    fn redo(&mut self, _params: &mut Params) {}
 
-    fn undo(&mut self, params: &mut Params) {}
+    fn undo(&mut self, _params: &mut Params) {}
 }
 
 

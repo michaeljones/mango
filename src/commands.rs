@@ -73,7 +73,6 @@ impl Command for CreateNodeCommand {
 pub struct DeleteNodeCommand {
     node: NodeRef,
     g_node: gui_node::GuiNodeDataRef,
-    previous_last_node: Option<Rc<RefCell<gui_node::GuiNodeData>>>,
 }
 
 impl DeleteNodeCommand {
@@ -81,7 +80,6 @@ impl DeleteNodeCommand {
         DeleteNodeCommand {
             node: node,
             g_node: g_node,
-            previous_last_node: None,
         }
     }
 
@@ -184,7 +182,7 @@ impl Command for DisconnectCommand {
         self.redo(params)
     }
 
-    fn redo(&mut self, mut params: &mut Params) {
+    fn redo(&mut self, params: &mut Params) {
         build::disconnect(self.to, Some(1), &params.node_map);
     }
 
