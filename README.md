@@ -6,6 +6,15 @@ provide common operations in a more powerful, flexible & discoverable way than t
 Simple data typing along with easy to find, useful transformations make it an ideal tool for quickly
 messing around with data.
 
+
+## Screenshot
+
+![Mango Screenshot](/images/mango-screenshot.png?raw=true)
+
+Basic example of extracting keys from a json object that comes in on standard-in. The keys are
+written to standard-out.
+
+
 ## How to use
 
 1.  Clone this repository
@@ -34,14 +43,6 @@ This is also my first Rust project of any size so that code is likely to be horr
 influenced by my time spent with C++ & Javascript.
 
 
-## Motivation
-
-As a web developer, I spend more time that I would like, writing little scripts to transfer json
-data and other text. Rather than writing a bespoke script each time with the effort needed to get
-the syntax & flow correct, I would like to plug some nodes together in a responsive editor and have
-them do the processing for me.
-
-
 ## Use cases
 
 There are two use cases:
@@ -63,25 +64,19 @@ There are two use cases:
   commandline piping.
 
 
+## Motivation
+
+As a web developer, I spend more time that I would like, writing little scripts to transfer json
+data and other text. Rather than writing a bespoke script each time with the effort needed to get
+the syntax & flow correct, I would like to plug some nodes together in a responsive editor and have
+them do the processing for me.
+
+
 ## Technology
 
 Mango is written in Rust & uses the [Conrod](https://github.com/PistonDevelopers/conrod) framework
 for the 2D graphics. It is possible that it'll be served better by a different framework or a
 combination of Conrod for the node graph & a more traditional GUI framework for the rest.
-
-
-## Screenshot
-
-![Mango Screenshot](/images/mango-screenshot.png?raw=true)
-
-Basic example of extracting keys from a json object that comes in on standard-in. The keys are
-written to standard-out.
-
-
-## Related Work
-
-- [jq](https://stedolan.github.io/jq/) can be used to quickly process JSON data with commandline
-  based text expressions.
 
 
 ## Controls
@@ -105,7 +100,40 @@ section for a typical session example.
 | : | Start a command prompt at the bottom that has only one acceptable command `:w <filename>` which writes the current nodes graph to the specified file |
 
 
-## Implemented Nodes
+## Concepts
+
+The idea is that each node can take one or more inputs of different data types and provides some
+kind of output. The system uses a Rust enum type called FlowData to describe the data being passed
+between the nodes:
+
+```rust
+pub enum FlowData {
+    None,
+    Error(String),
+    String(String),
+    StringArray(Vec<String>),
+    Int(i64),
+    IntArray(Vec<i64>),
+    Json(json::JsonValue),
+}
+```
+
+This allows each node to handle different input data types in different ways including triggering an
+error if they are not supported.
+
+Each node can be added to the system in a reasonable isolated way.
+
+
+## Known Issues
+
+- The interface does not support interacting with more than one input on a node.
+- The text boxes do not focus automatically so you have to click inside to type which is
+  frustrating.
+
+
+## Implementation
+
+### Implemenated Nodes
 
 | **Name** | **From** | **To** |
 | -------- | -------- | ------ |
@@ -121,7 +149,7 @@ section for a typical session example.
 | To Int | StringArray | IntArray |
 
 
-## Potential Nodes
+### Planned Nodes
 
 - File in
 - File out
@@ -144,7 +172,7 @@ section for a typical session example.
 - String title case
 - String trim
 - Constant
-- Image resize
+- Image resize - would require a 'image' data type
 - Image greyscale
 - Take
 - Drop
@@ -152,8 +180,13 @@ section for a typical session example.
 - Difference
 
 
-## Sub-Networks
+### Sub-Networks
 
 To allow a custom series of operations within a single node that exposes expected input & output
 connections.
 
+
+## Related Work
+
+- [jq](https://stedolan.github.io/jq/) can be used to quickly process JSON data with commandline
+  based text expressions.
