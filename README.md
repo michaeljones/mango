@@ -45,9 +45,24 @@ There are two use cases:
   commandline piping.
 
 
+## Screenshot
+
+![Mango Screenshot](/images/mango-screenshot.png?raw=true)
+
+Basic example of extracting keys from a json object that comes in on standard-in. The keys are
+written to standard-out.
+
+
+## Related Work
+
+- [jq](https://stedolan.github.io/jq/) can be used to quickly process JSON data with commandline
+  based text expressions.
+
+
 ## Implemented Nodes
 
 | **Name** | **From** | **To** |
+| -------- | -------- | ------ |
 | Standard in | - | StringArray |
 | Standard out | * | - |
 | Json parse | String | Json |
@@ -58,6 +73,7 @@ There are two use cases:
 | String Contains | StringArray | StringArray |
 | Sum | IntArray | Int |
 | To Int | StringArray | IntArray |
+
 
 ## Potential Nodes
 
@@ -88,6 +104,7 @@ There are two use cases:
 - Drop
 - Union
 - Difference
+
 
 ## Sub-Networks
 

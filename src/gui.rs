@@ -57,7 +57,7 @@ pub fn gui(mut ui: &mut conrod::Ui, mut params: &mut Params, width: u32, height:
     let display = glium::glutin::WindowBuilder::new()
         .with_vsync()
         .with_dimensions(width, height)
-        .with_title("slipstream")
+        .with_title("mango")
         .with_multisampling(4)
         .build_glium()
         .unwrap();
