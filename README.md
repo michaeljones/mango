@@ -190,3 +190,4 @@ connections.
 
 - [jq](https://stedolan.github.io/jq/) can be used to quickly process JSON data with commandline
   based text expressions.
+- [Apache Nifi](https://nifi.apache.org/)
