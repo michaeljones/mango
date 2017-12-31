@@ -1,9 +1,8 @@
-
 use gui_node;
 use build;
-use commands::{CreateNodeCommand, CreateConnectionCommand, DisconnectCommand, DeleteNodeCommand,
-               Command, CommandGroup, UndoStack};
-use params::{Params, CreateState, CommandLine, InteractionMode};
+use commands::{Command, CommandGroup, CreateConnectionCommand, CreateNodeCommand,
+               DeleteNodeCommand, DisconnectCommand, UndoStack};
+use params::{CommandLine, CreateState, InteractionMode, Params};
 use Node;
 use NodeUI;
 use NodeUIData;
@@ -17,8 +16,7 @@ use std::ops::DerefMut;
 use std::ops::Deref;
 
 use conrod;
-use conrod::backend::glium::glium;
-use conrod::backend::glium::glium::{DisplayBuild, Surface};
+use conrod::backend::glium::glium::{self, Surface};
 use std;
 
 #[derive(Debug)]
@@ -50,17 +48,19 @@ fn find_gui_node(
     nodes.get(&id)
 }
 
+pub fn gui(ui: &mut conrod::Ui, mut params: &mut Params, width: u32, height: u32) {
+    let mut events_loop = glium::glutin::EventsLoop::new();
 
-pub fn gui(mut ui: &mut conrod::Ui, mut params: &mut Params, width: u32, height: u32) {
+    let window = glium::glutin::WindowBuilder::new()
+        .with_title("mango")
+        .with_dimensions(width, height);
+
+    let context = glium::glutin::ContextBuilder::new()
+        .with_vsync(true)
+        .with_multisampling(4);
 
     // Build the window.
-    let display = glium::glutin::WindowBuilder::new()
-        .with_vsync()
-        .with_dimensions(width, height)
-        .with_title("mango")
-        .with_multisampling(4)
-        .build_glium()
-        .unwrap();
+    let display = glium::Display::new(window, context, &events_loop).unwrap();
 
     // Generate the widget identifiers.
     let mut ids = Ids::new(ui.widget_id_generator());
@@ -81,11 +81,9 @@ pub fn gui(mut ui: &mut conrod::Ui, mut params: &mut Params, width: u32, height:
 
     // Poll events from the window.
     let mut last_update = std::time::Instant::now();
-    let mut ui_needs_update = true;
     let mut undo_stack = UndoStack::new();
 
     'main: loop {
-
         // We don't want to loop any faster than 60 FPS, so wait until it has been at least
         // 16ms since the last yield.
         let sixteen_ms = std::time::Duration::from_millis(16);
@@ -95,30 +93,23 @@ pub fn gui(mut ui: &mut conrod::Ui, mut params: &mut Params, width: u32, height:
         }
 
         // Collect all pending events.
-        let mut events: Vec<_> = display.poll_events().collect();
-
-        // If there are no events and the `Ui` does not need updating, wait for the next event.
-        if events.is_empty() && !ui_needs_update {
-            events.extend(display.wait_events().next());
-        }
+        let mut events = Vec::new();
+        events_loop.poll_events(|event| events.push(event));
 
         // Reset the needs_update flag and time this update.
-        ui_needs_update = false;
         last_update = std::time::Instant::now();
 
         // Handle all events.
         for event in events {
-
             // Use the `winit` backend feature to convert the winit event to a conrod one.
-            if let Some(event) = conrod::backend::winit::convert(event.clone(), &display) {
+            if let Some(event) = conrod::backend::winit::convert_event(event.clone(), &display) {
                 use conrod::event::Input;
                 use conrod::input::{Button, Key, Motion};
 
                 ui.handle_event(event.clone());
-                ui_needs_update = true;
 
-                let entering_text = params.display_menu != CreateState::None ||
-                    params.command_line != CommandLine::None;
+                let entering_text = params.display_menu != CreateState::None
+                    || params.command_line != CommandLine::None;
 
                 if entering_text {
                     match event.clone() {
@@ -203,7 +194,10 @@ pub fn gui(mut ui: &mut conrod::Ui, mut params: &mut Params, width: u32, height:
                         Input::Release(Button::Keyboard(Key::R)) => {
                             let global = ui.global_input();
                             let ref state = global.current;
-                            if state.modifiers.contains(conrod::input::keyboard::CTRL) {
+                            if state
+                                .modifiers
+                                .contains(conrod::input::keyboard::ModifierKey::CTRL)
+                            {
                                 undo_stack.redo(&mut params);
                             }
                         }
@@ -260,7 +254,6 @@ pub fn gui(mut ui: &mut conrod::Ui, mut params: &mut Params, width: u32, height:
                             // println!("{:?}", event);
                         }
                     }
-
                 }
                 match event.clone() {
                     Input::Motion(Motion::MouseCursor { x, y }) => {
@@ -272,16 +265,20 @@ pub fn gui(mut ui: &mut conrod::Ui, mut params: &mut Params, width: u32, height:
             }
 
             match event {
-                // Break from the loop upon `Escape`.
-                glium::glutin::Event::KeyboardInput(
-                    _,
-                    _,
-                    Some(glium::glutin::VirtualKeyCode::Q),
-                ) |
-                glium::glutin::Event::Closed => {
-                    break 'main;
-                }
-                _ => {}
+                glium::glutin::Event::WindowEvent { event, .. } => match event {
+                    // Break from the loop upon `Escape`.
+                    glium::glutin::WindowEvent::Closed
+                    | glium::glutin::WindowEvent::KeyboardInput {
+                        input:
+                            glium::glutin::KeyboardInput {
+                                virtual_keycode: Some(glium::glutin::VirtualKeyCode::Q),
+                                ..
+                            },
+                        ..
+                    } => break 'main,
+                    _ => (),
+                },
+                _ => (),
             }
         }
 
@@ -321,7 +318,7 @@ fn draw_parameters(
         }
         &NodeUI::StringField(ref data) => {
             let mut bn = node.borrow_mut();
-            let mut nn = bn.deref_mut();
+            let nn = bn.deref_mut();
             let id = ids.walk().next(ids, &mut ui.widget_id_generator());
 
             if let NodeUIData::StringData(value) = nn.get_value(&data.field) {
@@ -334,7 +331,6 @@ fn draw_parameters(
                     .left_justify()
                     .set(id, ui)
                 {
-
                     match event {
                         widget::text_box::Event::Update(string) => {
                             nn.set_value(&data.field, NodeUIData::StringData(string));
@@ -345,7 +341,6 @@ fn draw_parameters(
             }
         }
     }
-
 }
 
 fn set_ui(
@@ -435,7 +430,6 @@ fn set_ui(
             .left_justify()
             .set(ids.text_edit, ui)
         {
-
             match event {
                 widget::text_box::Event::Update(string) => params.name_input = string,
                 widget::text_box::Event::Enter => {
@@ -456,7 +450,6 @@ fn set_ui(
             .left_justify()
             .set(ids.command_line, ui)
         {
-
             match event {
                 widget::text_box::Event::Update(string) => {
                     params.command_line = CommandLine::Text(string);
@@ -493,12 +486,10 @@ fn set_ui(
                     params.connect_node = Some(g_node.clone());
                     params.current_connection = Some(state.mouse.xy);
                 }
-                gui_node::Event::ConnectInput => {
-                }
+                gui_node::Event::ConnectInput => {}
                 _ => {}
             }
         }
-
     }
 
     match params.current_connection {
@@ -571,7 +562,6 @@ fn set_ui(
         }
     }
 
-
     widget::Scrollbar::y_axis(ids.canvas)
         .auto_hide(true)
         .set(ids.scrollbar, ui);
@@ -597,7 +587,7 @@ fn find_output_node(id: i64, connections: &HashMap<(i64, i64), Connection>) -> O
 
 fn create_node(
     mut params: &mut Params,
-    mut undo_stack: &mut UndoStack,
+    undo_stack: &mut UndoStack,
     mut generator: conrod::widget::id::Generator,
 ) -> () {
     let new_node_id = params.node_id + 1;
@@ -619,7 +609,6 @@ fn create_node(
 
         let g_node_deref = g_node.borrow();
 
-
         let mut commands: Vec<Rc<RefCell<Command>>> = vec![];
         let command = CreateNodeCommand::new_ref(node.clone(), g_node.clone());
 
@@ -634,8 +623,7 @@ fn create_node(
 
                     match params.display_menu {
                         CreateState::Before => {
-                            if let Some(connected) =
-                                find_input_node(b.node_id, &params.connections)
+                            if let Some(connected) = find_input_node(b.node_id, &params.connections)
                             {
                                 commands.push(CreateConnectionCommand::new_ref(
                                     generator.next(),
@@ -678,9 +666,10 @@ fn create_node(
                                         new_node_id,
                                         onode,
                                     ));
-                                    commands.push(
-                                        DeleteNodeCommand::new_ref(nn.clone(), g_node.clone()),
-                                    );
+                                    commands.push(DeleteNodeCommand::new_ref(
+                                        nn.clone(),
+                                        g_node.clone(),
+                                    ));
                                 }
                                 _ => {}
                             }

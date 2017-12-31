@@ -7,4 +7,5 @@ authors = ["Michael Jones <m.pricejones@gmail.com>"]
 yaml-rust = "*"
 json = "*"
 conrod = { version = "*", features = ["winit", "glium"] }
+conrod_derive = "*"
 clap = "*"

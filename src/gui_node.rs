@@ -1,4 +1,3 @@
-
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -26,23 +25,21 @@ pub struct GuiNodeData {
 
 pub type GuiNodeDataRef = Rc<RefCell<GuiNodeData>>;
 
+#[derive(Clone, WidgetCommon)]
 pub struct GuiNode {
-    common: widget::CommonBuilder,
+    #[conrod(common_builder)] common: widget::CommonBuilder,
     data: GuiNodeDataRef,
     style: Style,
     selected: bool,
 }
-
 
 // We use the `widget_style!` macro to vastly simplify the definition and implementation of the
 // widget's associated `Style` type. This generates both a `Style` struct, as well as an
 // implementation that automatically retrieves defaults from the provided theme.
 //
 // See the documenation of the macro for a more details.
-widget_style! {
-    style Style {
-    }
-}
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle)]
+pub struct Style {}
 
 // We'll create the widget using a `Circle` widget and a `Text` widget for its label.
 //
@@ -64,9 +61,9 @@ pub struct State {
 impl GuiNode {
     pub fn new(data: Rc<RefCell<GuiNodeData>>, selected: bool) -> Self {
         GuiNode {
-            common: widget::CommonBuilder::new(),
+            common: widget::CommonBuilder::default(),
             data: data,
-            style: Style::new(),
+            style: Style::default(),
             selected: selected,
         }
     }
@@ -92,14 +89,6 @@ impl Widget for GuiNode {
     /// `Some` when clicked, otherwise `None`.
     type Event = Option<Event>;
 
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
-
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
             ids: Ids::new(id_gen),
@@ -120,7 +109,7 @@ impl Widget for GuiNode {
             id,
             maybe_parent_id,
             state,
-            mut ui,
+            ui,
             ..
         } = args;
 
@@ -143,32 +132,34 @@ impl Widget for GuiNode {
                             output_event = Event::Click;
                         }
                     }
-                    conrod::event::Widget::Press(press) => {
-                        match press.button {
-                            conrod::event::Button::Mouse(_, _) => {
-                                if press.modifiers.contains(conrod::input::keyboard::CTRL) {
-                                    data.mode = Mode::OutputConnection;
-                                    output_event = Event::ConnectOutput;
-                                } else {
-                                    data.mode = Mode::Drag;
-                                }
+                    conrod::event::Widget::Press(press) => match press.button {
+                        conrod::event::Button::Mouse(_, _) => {
+                            if press
+                                .modifiers
+                                .contains(conrod::input::keyboard::ModifierKey::CTRL)
+                            {
+                                data.mode = Mode::OutputConnection;
+                                output_event = Event::ConnectOutput;
+                            } else {
+                                data.mode = Mode::Drag;
                             }
-                            _ => {}
                         }
-                    }
-                    conrod::event::Widget::Release(release) => {
-                        match release.button {
-                            conrod::event::Button::Mouse(_, _) => {
-                                if release.modifiers.contains(conrod::input::keyboard::CTRL) {
-                                    output_event = Event::ConnectInput;
-                                } else {
-                                    data.origin_x = data.x;
-                                    data.origin_y = data.y;
-                                }
+                        _ => {}
+                    },
+                    conrod::event::Widget::Release(release) => match release.button {
+                        conrod::event::Button::Mouse(_, _) => {
+                            if release
+                                .modifiers
+                                .contains(conrod::input::keyboard::ModifierKey::CTRL)
+                            {
+                                output_event = Event::ConnectInput;
+                            } else {
+                                data.origin_x = data.x;
+                                data.origin_y = data.y;
                             }
-                            _ => {}
                         }
-                    }
+                        _ => {}
+                    },
                     _ => {}
                 }
             }
@@ -200,7 +191,6 @@ impl Widget for GuiNode {
                         .length(20.0)
                         .rgb(159.0 / 256.0, 168.0 / 256.0, 171.0 / 256.0),
                 ),
-
                 (
                     state.ids.body,
                     widget::Canvas::new()
@@ -210,7 +200,6 @@ impl Widget for GuiNode {
                         .rgb(91.0 / 256.0, 103.0 / 256.0, 107.0 / 256.0)
                         .and_if(self.selected, |w| w.rgb(0.5, 0.5, 0.5)),
                 ),
-
                 (
                     state.ids.output_button,
                     widget::Canvas::new()

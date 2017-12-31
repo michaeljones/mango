@@ -1,21 +1,13 @@
-
 use conrod::{self, widget, Widget};
 
+#[derive(Clone, WidgetCommon)]
 pub struct Background {
-    common: widget::CommonBuilder,
-    style: Style,
+    #[conrod(common_builder)] pub common: widget::CommonBuilder,
+    pub style: Style,
 }
 
-
-// We use the `widget_style!` macro to vastly simplify the definition and implementation of the
-// widget's associated `Style` type. This generates both a `Style` struct, as well as an
-// implementation that automatically retrieves defaults from the provided theme.
-//
-// See the documenation of the macro for a more details.
-widget_style! {
-    style Style {
-    }
-}
+#[derive(Copy, Clone, Debug, Default, PartialEq, WidgetStyle)]
+pub struct Style {}
 
 // We'll create the widget using a `Circle` widget and a `Text` widget for its label.
 //
@@ -33,8 +25,8 @@ pub struct State {
 impl Background {
     pub fn new() -> Self {
         Background {
-            common: widget::CommonBuilder::new(),
-            style: Style::new(),
+            common: widget::CommonBuilder::default(),
+            style: Style::default(),
         }
     }
 }
@@ -57,14 +49,6 @@ impl Widget for Background {
     /// `Some` when clicked, otherwise `None`.
     type Event = Option<Event>;
 
-    fn common(&self) -> &widget::CommonBuilder {
-        &self.common
-    }
-
-    fn common_mut(&mut self) -> &mut widget::CommonBuilder {
-        &mut self.common
-    }
-
     fn init_state(&self, id_gen: widget::id::Generator) -> Self::State {
         State {
             ids: Ids::new(id_gen),
@@ -84,7 +68,7 @@ impl Widget for Background {
             id,
             maybe_parent_id,
             state,
-            mut ui,
+            ui,
             ..
         } = args;
 
