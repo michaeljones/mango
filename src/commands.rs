@@ -131,11 +131,11 @@ impl CreateConnectionCommand {
 }
 
 impl Command for CreateConnectionCommand {
-    fn execute(&mut self, mut params: &mut Params) {
+    fn execute(&mut self, params: &mut Params) {
         self.redo(params)
     }
 
-    fn redo(&mut self, mut params: &mut Params) {
+    fn redo(&mut self, params: &mut Params) {
         build::connect(self.from, None, self.to, Some(1), &params.node_map);
 
         params.connections.insert(
@@ -177,7 +177,7 @@ impl DisconnectCommand {
 }
 
 impl Command for DisconnectCommand {
-    fn execute(&mut self, mut params: &mut Params) {
+    fn execute(&mut self, params: &mut Params) {
         self.connection = params.connections.remove(&(self.from, self.to));
         self.redo(params)
     }
